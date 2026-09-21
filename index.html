@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Obi's Snack Spot</title>
+
+    <!-- Link CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <header>
+        <nav class="navbar">
+            <div class="nav-brand">
+                <h1>Obi's Snack Spot</h1>
+                <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+
+            <ul class="nav-menu">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#menu">Menu</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section id="contact" class="contact-section top-contact">
+        <div class="contact-dashboard top-contact-row">
+            <a class="contact-card location-card" href="https://www.google.com/maps/search/Lagos,+Nigeria" target="_blank" rel="noopener noreferrer">
+                <div class="location-card-content">
+                    <span class="contact-icon">📍</span>
+                    <h3>Location</h3>
+                    <p>See where Obi's Snack Spot is in Lagos, Nigeria</p>
+                    <span class="location-btn">Open Map</span>
+                </div>
+            </a>
+
+            <div class="contact-card whatsapp-card">
+                <span class="contact-icon">💬</span>
+                <h3>WhatsApp</h3>
+                <p>Order your meal directly on WhatsApp</p>
+                <a class="whatsapp-btn" href="https://wa.me/2347077266794?text=Hello%20Obi's%20Snack%20Spot%2C%20I%20want%20to%20place%20an%20order." target="_blank" rel="noopener noreferrer">
+                    Chat on WhatsApp
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Home Section -->
+    <section id="home" class="hero">
+        <h2>Welcome to Obi's Snack Spot</h2>
+        <p>Fresh snacks, tasty meals and cool drinks for everyone.</p>
+        <a href="#menu" class="button">View Our Menu</a>
+    </section>
+
+    <!-- Menu Section -->
+    <section id="menu" class="menu-section">
+        <h2>Our Menu</h2>
+
+        <div class="menu-grid">
+
+            <article class="food-card" data-name="Chicken Burger" data-price="₦2,500" style="background-image: url('https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80');">
+                <div class="food-info">
+                    <h3>Chicken Burger</h3>
+                    <p>Delicious chicken burger with fresh vegetables.</p>
+                    <div class="food-bottom">
+                        <span>₦2,500</span>
+                        <button type="button" class="order-btn">Order</button>
+                    </div>
+                </div>
+            </article>
+
+            <article class="food-card" data-name="Shawarma" data-price="₦2,000" style="background-image: url('https://images.unsplash.com/photo-1529006557810-274b9b2fc783?auto=format&fit=crop&w=900&q=80');">
+                <div class="food-info">
+                    <h3>Shawarma</h3>
+                    <p>Fresh shawarma filled with chicken and vegetables.</p>
+                    <div class="food-bottom">
+                        <span>₦2,000</span>
+                        <button type="button" class="order-btn">Order</button>
+                    </div>
+                </div>
+            </article>
+
+            <article class="food-card" data-name="Meat Pie" data-price="₦1,000" style="background-image: url('https://images.unsplash.com/photo-1518492104633-130d0cc84637?auto=format&fit=crop&w=900&q=80');">
+                <div class="food-info">
+                    <h3>Meat Pie</h3>
+                    <p>Freshly baked meat pie with a tasty filling.</p>
+                    <div class="food-bottom">
+                        <span>₦1,000</span>
+                        <button type="button" class="order-btn">Order</button>
+                    </div>
+                </div>
+            </article>
+
+            <article class="food-card" data-name="Jollof Rice & Chicken" data-price="₦3,000" style="background-image: url('https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=900&q=80');">
+                <div class="food-info">
+                    <h3>Jollof Rice & Chicken</h3>
+                    <p>Special Nigerian jollof rice served with chicken.</p>
+                    <div class="food-bottom">
+                        <span>₦3,000</span>
+                        <button type="button" class="order-btn">Order</button>
+                    </div>
+                </div>
+            </article>
+
+            <article class="food-card" data-name="French Fries" data-price="₦1,500" style="background-image: url('https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=900&q=80');">
+                <div class="food-info">
+                    <h3>French Fries</h3>
+                    <p>Crispy golden fries served hot and fresh.</p>
+                    <div class="food-bottom">
+                        <span>₦1,500</span>
+                        <button type="button" class="order-btn">Order</button>
+                    </div>
+                </div>
+            </article>
+
+            <article class="food-card" data-name="Cold Drink" data-price="₦800" style="background-image: url('https://images.unsplash.com/photo-1622483767028-3f66f2b7420a?auto=format&fit=crop&w=900&q=80');">
+                <div class="food-info">
+                    <h3>Cold Drink</h3>
+                    <p>Choose from a variety of refreshing soft drinks.</p>
+                    <div class="food-bottom">
+                        <span>₦800</span>
+                        <button type="button" class="order-btn">Order</button>
+                    </div>
+                </div>
+            </article>
+
+            <article class="food-card featured" data-name="Fresh Fruit Juice" data-price="₦1,200" style="background-image: url('https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=80');">
+                <div class="food-info">
+                    <h3>Fresh Fruit Juice</h3>
+                    <p>Sweet and chilled fruit juice served fresh.</p>
+                    <div class="food-bottom">
+                        <span>₦1,200</span>
+                        <button type="button" class="order-btn">Order</button>
+                    </div>
+                </div>
+            </article>
+
+            <article class="food-card" data-name="Coca-Cola" data-price="₦700" style="background-image: url('https://images.unsplash.com/photo-1622483767028-3f66f2b7420a?auto=format&fit=crop&w=900&q=80');">
+                <div class="food-info">
+                    <h3>Coca-Cola</h3>
+                    <p>Classic chilled cola served ice-cold and fizzy.</p>
+                    <div class="food-bottom">
+                        <span>₦700</span>
+                        <button type="button" class="order-btn">Order</button>
+                    </div>
+                </div>
+            </article>
+
+            <article class="food-card" data-name="Lemonade" data-price="₦900" style="background-image: url('https://images.unsplash.com/photo-1513558161293-cdaf765ed2e6?auto=format&fit=crop&w=900&q=80');">
+                <div class="food-info">
+                    <h3>Lemonade</h3>
+                    <p>Freshly squeezed lemon drink with a sweet citrus kick.</p>
+                    <div class="food-bottom">
+                        <span>₦900</span>
+                        <button type="button" class="order-btn">Order</button>
+                    </div>
+                </div>
+            </article>
+
+            <article class="food-card" data-name="Red Wine" data-price="₦4,500" style="background-image: url('https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=900&q=80');">
+                <div class="food-info">
+                    <h3>Red Wine</h3>
+                    <p>Rich and smooth red wine for a relaxing evening.</p>
+                    <div class="food-bottom">
+                        <span>₦4,500</span>
+                        <button type="button" class="order-btn">Order</button>
+                    </div>
+                </div>
+            </article>
+
+        </div>
+    </section>
+
+    <section class="features-section">
+        <div class="section-heading">
+            <p class="eyebrow">Why choose us</p>
+            <h2>Fresh food, fast service, and real comfort</h2>
+        </div>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <span class="feature-icon">🍽️</span>
+                <h3>Freshly made</h3>
+                <p>Every order is prepared with care, flavor, and quality ingredients.</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="feature-icon">⚡</span>
+                <h3>Fast delivery</h3>
+                <p>Quick service for busy days, lunch breaks, cravings, and late-night snacks.</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="feature-icon">💸</span>
+                <h3>Affordable prices</h3>
+                <p>Great taste without breaking your budget, with prices for every budget.</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="feature-icon">📍</span>
+                <h3>Lagos favorite</h3>
+                <p>Made for the everyday Lagos food lover who wants tasty meals anytime.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="steps-section">
+        <div class="section-heading">
+            <p class="eyebrow">How it works</p>
+            <h2>Order in 3 easy steps</h2>
+        </div>
+
+        <div class="steps-grid">
+            <div class="step-card">
+                <span class="step-number">1</span>
+                <h3>Choose your meal</h3>
+                <p>Pick from burgers, shawarma, rice, drinks and more.</p>
+            </div>
+
+            <div class="step-card">
+                <span class="step-number">2</span>
+                <h3>Confirm on WhatsApp</h3>
+                <p>Send your order directly to us and we take it from there.</p>
+            </div>
+
+            <div class="step-card">
+                <span class="step-number">3</span>
+                <h3>Enjoy delivery</h3>
+                <p>We get your food ready quickly so you can enjoy it without stress.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="testimonials-section">
+        <div class="section-heading">
+            <p class="eyebrow">Customers love us</p>
+            <h2>What people are saying</h2>
+        </div>
+
+        <div class="testimonials-grid">
+            <div class="testimonial-card">
+                <p>“The jollof is always on point and the service is super fast. It feels like a real neighborhood spot.”</p>
+                <h3>Sarah A.</h3>
+            </div>
+
+            <div class="testimonial-card">
+                <p>“Their burgers and drinks are fresh, and the ordering process is so easy. I order every weekend.”</p>
+                <h3>Daniel O.</h3>
+            </div>
+
+            <div class="testimonial-card">
+                <p>“Best snack spot in the area. Good food, clean vibe, and friendly service every time.”</p>
+                <h3>Joyce M.</h3>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="cta-box">
+            <p class="eyebrow light">Ready to eat</p>
+            <h2>Order your favorite meal today</h2>
+            <a class="cta-button" href="https://wa.me/2347077266794?text=Hello%20Obi's%20Snack%20Spot%2C%20I%20want%20to%20place%20an%20order." target="_blank" rel="noopener noreferrer">Order on WhatsApp</a>
+        </div>
+    </section>
+
+    <div class="modal" id="foodModal" aria-hidden="true">
+        <div class="modal-backdrop" data-close="true"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-label="Food preview">
+            <button class="modal-close" type="button" aria-label="Close">×</button>
+            <div class="modal-gallery">
+                <img id="modalMainImage" src="" alt="Food preview">
+                <div class="thumbnail-row" id="thumbnailRow"></div>
+            </div>
+            <div class="modal-details">
+                <span class="modal-tag">Featured item</span>
+                <h3 id="modalTitle">Food item</h3>
+                <p id="modalDescription">Description</p>
+                <div class="modal-price-row">
+                    <span id="modalPrice">₦0</span>
+                    <button type="button" class="modal-order-btn">Order now</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Section -->
+    <section id="about" class="about-section">
+        <h2>About Us</h2>
+        <p>
+            Obi's Snack Spot is a friendly neighborhood food joint
+            serving tasty and affordable meals, snacks and drinks.
+            We are committed to giving our customers great food
+            and excellent service.
+        </p>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div>
+            <h3>Opening Hours</h3>
+            <p>Monday - Saturday: 8:00 AM - 9:00 PM</p>
+            <p>Sunday: 10:00 AM - 6:00 PM</p>
+        </div>
+
+        <div>
+            <h3>Contact</h3>
+            <p>07077266794</p>
+            <p>Lagos, Nigeria</p>
+        </div>
+
+        <p class="copyright">
+            &copy; <span id="year"></span> Obi's Snack Spot. All rights reserved.
+        </p>
+    </footer>
+
+    <a class="floating-whatsapp" href="https://wa.me/2347077266794?text=Hello%20Obi's%20Snack%20Spot%2C%20I%20want%20to%20place%20an%20order." target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp">
+        💬
+    </a>
+
+    <script src="script.js"></script>
+</body>
+</html>
