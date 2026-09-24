@@ -24,15 +24,15 @@
             </div>
 
             <ul class="nav-menu">
-                <li><a href="#home">Home</a></li>
-                <li><a href="#menu">Menu</a></li>
-                <li><a href="#about">About</a></li>
-                <li><a href="#contact">Contact</a></li>
+                <li><button type="button" class="nav-link active" data-target="home">Home</button></li>
+                <li><button type="button" class="nav-link" data-target="menu">Menu</button></li>
+                <li><button type="button" class="nav-link" data-target="about">About</button></li>
+                <li><button type="button" class="nav-link" data-target="contact">Contact</button></li>
             </ul>
         </nav>
     </header>
 
-    <section id="contact" class="contact-section top-contact">
+    <section id="contact" class="contact-section top-contact accordion-panel" data-panel="contact">
         <div class="contact-dashboard top-contact-row">
             <a class="contact-card location-card" href="https://www.google.com/maps/search/Lagos,+Nigeria" target="_blank" rel="noopener noreferrer">
                 <div class="location-card-content">
@@ -55,19 +55,50 @@
     </section>
 
     <!-- Home Section -->
-    <section id="home" class="hero">
+    <section id="home" class="hero accordion-panel active" data-panel="home">
         <h2>Welcome to Obi's Snack Spot</h2>
         <p>Fresh snacks, tasty meals and cool drinks for everyone.</p>
         <a href="#menu" class="button">View Our Menu</a>
     </section>
 
+    <section class="quick-order-strip">
+        <div class="quick-order-inner">
+            <p>Quick order</p>
+            <div class="quick-order-buttons">
+                <button type="button" class="quick-order-btn" data-quick-item="Chicken Burger">Burger</button>
+                <button type="button" class="quick-order-btn" data-quick-item="Shawarma">Shawarma</button>
+                <button type="button" class="quick-order-btn" data-quick-item="Jollof Rice & Chicken">Jollof</button>
+                <button type="button" class="quick-order-btn" data-quick-item="French Fries">Fries</button>
+            </div>
+        </div>
+    </section>
+
     <!-- Menu Section -->
-    <section id="menu" class="menu-section">
-        <h2>Our Menu</h2>
+    <section id="menu" class="menu-section accordion-panel" data-panel="menu">
+        <div class="section-heading">
+            <p class="eyebrow">Our menu</p>
+            <h2>Popular meals, snacks, and drinks</h2>
+        </div>
+
+        <div class="menu-toolbar">
+            <div class="filter-bar" aria-label="Menu categories">
+                <button type="button" class="filter-btn active" data-filter="all">All</button>
+                <button type="button" class="filter-btn" data-filter="meal">Meals</button>
+                <button type="button" class="filter-btn" data-filter="snack">Snacks</button>
+                <button type="button" class="filter-btn" data-filter="drink">Drinks</button>
+            </div>
+
+            <div class="menu-search" role="search">
+                <input id="menuSearch" type="search" placeholder="Search for a meal, snack or drink" aria-label="Search the menu" />
+                <button id="menuSearchBtn" type="button">Search</button>
+            </div>
+        </div>
+
+        <p id="noResultsMessage" class="no-results" hidden>No menu item matches your search.</p>
 
         <div class="menu-grid">
 
-            <article class="food-card" data-name="Chicken Burger" data-price="₦2,500" style="background-image: url('https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80');">
+            <article class="food-card" data-category="meal" data-name="Chicken Burger" data-price="2500" style="background-image: url('https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80');">
                 <div class="food-info">
                     <h3>Chicken Burger</h3>
                     <p>Delicious chicken burger with fresh vegetables.</p>
@@ -78,7 +109,7 @@
                 </div>
             </article>
 
-            <article class="food-card" data-name="Shawarma" data-price="₦2,000" style="background-image: url('https://images.unsplash.com/photo-1529006557810-274b9b2fc783?auto=format&fit=crop&w=900&q=80');">
+            <article class="food-card" data-category="meal" data-name="Shawarma" data-price="2000" style="background-image: url('https://www.afropots.com/wp-content/uploads/2025/04/item-ae2fb3eb-8442-49ed-b5cb-cb7908f823fd-1.jpg');">
                 <div class="food-info">
                     <h3>Shawarma</h3>
                     <p>Fresh shawarma filled with chicken and vegetables.</p>
@@ -89,7 +120,7 @@
                 </div>
             </article>
 
-            <article class="food-card" data-name="Meat Pie" data-price="₦1,000" style="background-image: url('https://images.unsplash.com/photo-1518492104633-130d0cc84637?auto=format&fit=crop&w=900&q=80');">
+            <article class="food-card" data-category="snack" data-name="Meat Pie" data-price="1000" style="background-image: url('https://simshomekitchen.com/wp-content/uploads/2020/06/meat-pie-and-dough-recipe.png');">
                 <div class="food-info">
                     <h3>Meat Pie</h3>
                     <p>Freshly baked meat pie with a tasty filling.</p>
@@ -100,7 +131,7 @@
                 </div>
             </article>
 
-            <article class="food-card" data-name="Jollof Rice & Chicken" data-price="₦3,000" style="background-image: url('https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=900&q=80');">
+            <article class="food-card" data-category="meal" data-name="Jollof Rice & Chicken" data-price="3000" style="background-image: url('https://dodptt9f4zk9h.cloudfront.net/stores/139851/products/5190c507d7660dcc6a6db675eade7063e257f946.jpeg');">
                 <div class="food-info">
                     <h3>Jollof Rice & Chicken</h3>
                     <p>Special Nigerian jollof rice served with chicken.</p>
@@ -111,7 +142,7 @@
                 </div>
             </article>
 
-            <article class="food-card" data-name="French Fries" data-price="₦1,500" style="background-image: url('https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=900&q=80');">
+            <article class="food-card" data-category="snack" data-name="French Fries" data-price="1500" style="background-image: url('https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=900&q=80');">
                 <div class="food-info">
                     <h3>French Fries</h3>
                     <p>Crispy golden fries served hot and fresh.</p>
@@ -122,7 +153,7 @@
                 </div>
             </article>
 
-            <article class="food-card" data-name="Cold Drink" data-price="₦800" style="background-image: url('https://images.unsplash.com/photo-1622483767028-3f66f2b7420a?auto=format&fit=crop&w=900&q=80');">
+            <article class="food-card" data-category="drink" data-name="Cold Drink" data-price="800" style="background-image: url('https://images.unsplash.com/photo-1622483767028-3f66f2b7420a?auto=format&fit=crop&w=900&q=80');">
                 <div class="food-info">
                     <h3>Cold Drink</h3>
                     <p>Choose from a variety of refreshing soft drinks.</p>
@@ -133,7 +164,7 @@
                 </div>
             </article>
 
-            <article class="food-card featured" data-name="Fresh Fruit Juice" data-price="₦1,200" style="background-image: url('https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=80');">
+            <article class="food-card featured" data-category="drink" data-name="Fresh Fruit Juice" data-price="1200" style="background-image: url('https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=80');">
                 <div class="food-info">
                     <h3>Fresh Fruit Juice</h3>
                     <p>Sweet and chilled fruit juice served fresh.</p>
@@ -144,7 +175,7 @@
                 </div>
             </article>
 
-            <article class="food-card" data-name="Coca-Cola" data-price="₦700" style="background-image: url('https://images.unsplash.com/photo-1622483767028-3f66f2b7420a?auto=format&fit=crop&w=900&q=80');">
+            <article class="food-card" data-category="drink" data-name="Coca-Cola" data-price="700" style="background-image: url('https://www.supermart.ng/cdn/shop/files/ALTCITD827.jpg?v=1689111605');">
                 <div class="food-info">
                     <h3>Coca-Cola</h3>
                     <p>Classic chilled cola served ice-cold and fizzy.</p>
@@ -155,7 +186,7 @@
                 </div>
             </article>
 
-            <article class="food-card" data-name="Lemonade" data-price="₦900" style="background-image: url('https://images.unsplash.com/photo-1513558161293-cdaf765ed2e6?auto=format&fit=crop&w=900&q=80');">
+            <article class="food-card" data-category="drink" data-name="Lemonade" data-price="900" style="background-image: url('https://images.unsplash.com/photo-1497534446932-c925b458314e?auto=format&fit=crop&w=900&q=80');">
                 <div class="food-info">
                     <h3>Lemonade</h3>
                     <p>Freshly squeezed lemon drink with a sweet citrus kick.</p>
@@ -166,7 +197,7 @@
                 </div>
             </article>
 
-            <article class="food-card" data-name="Red Wine" data-price="₦4,500" style="background-image: url('https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=900&q=80');">
+            <article class="food-card" data-category="drink" data-name="Red Wine" data-price="4500" style="background-image: url('https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=900&q=80');">
                 <div class="food-info">
                     <h3>Red Wine</h3>
                     <p>Rich and smooth red wine for a relaxing evening.</p>
@@ -177,6 +208,50 @@
                 </div>
             </article>
 
+        </div>
+
+        <div class="checkout-panel">
+            <div class="cart-card">
+                <h3>Your order</h3>
+                <ul id="cartList" class="cart-list">
+                    <li class="empty-cart">Your cart is empty.</li>
+                </ul>
+                <div class="cart-total-row">
+                    <span>Total</span>
+                    <strong id="cartTotal">₦0</strong>
+                </div>
+            </div>
+
+            <form id="checkoutForm" class="checkout-form">
+                <h3>Delivery details</h3>
+                <div class="form-grid">
+                    <label>
+                        <span>Name</span>
+                        <input id="customerName" type="text" placeholder="Your name" />
+                    </label>
+                    <label>
+                        <span>Phone</span>
+                        <input id="customerPhone" type="tel" placeholder="Your phone number" />
+                    </label>
+                    <label class="full-width">
+                        <span>Address</span>
+                        <input id="customerAddress" type="text" placeholder="Delivery address" />
+                    </label>
+                    <label class="full-width">
+                        <span>Item not on the menu?</span>
+                        <input id="customItemName" type="text" placeholder="Type exactly what you want here, e.g. grilled fish and chips" />
+                    </label>
+                    <label>
+                        <span>Custom item price (optional)</span>
+                        <input id="customItemPrice" type="number" min="0" step="100" placeholder="Optional price" />
+                    </label>
+                    <label>
+                        <span>Order note</span>
+                        <textarea id="orderNotes" rows="3" placeholder="Extra notes, allergy info, or delivery instructions"></textarea>
+                    </label>
+                </div>
+                <button type="submit" class="checkout-btn">Place order</button>
+            </form>
         </div>
     </section>
 
@@ -213,6 +288,20 @@
         </div>
     </section>
 
+    <section class="gallery-section">
+        <div class="section-heading">
+            <p class="eyebrow">Taste the vibe</p>
+            <h2>Fresh food, cozy feel, great energy</h2>
+        </div>
+
+        <div class="gallery-grid">
+            <img src="https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80" alt="Food display" />
+            <img src="https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=900&q=80" alt="Shawarma platter" />
+            <img src="https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80" alt="Meal plate" />
+            <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80" alt="Restaurant interior" />
+        </div>
+    </section>
+
     <section class="steps-section">
         <div class="section-heading">
             <p class="eyebrow">How it works</p>
@@ -236,6 +325,32 @@
                 <span class="step-number">3</span>
                 <h3>Enjoy delivery</h3>
                 <p>We get your food ready quickly so you can enjoy it without stress.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="faq-section">
+        <div class="section-heading">
+            <p class="eyebrow">FAQ</p>
+            <h2>Everything you need to know</h2>
+        </div>
+
+        <div class="faq-grid">
+            <div class="faq-item">
+                <h3>Do you offer delivery?</h3>
+                <p>Yes. We deliver across Lagos and nearby areas with quick turnaround times.</p>
+            </div>
+            <div class="faq-item">
+                <h3>Can I order for a group?</h3>
+                <p>Absolutely. Bulk orders and family meals are available for parties and events.</p>
+            </div>
+            <div class="faq-item">
+                <h3>What payment methods do you accept?</h3>
+                <p>We mainly accept cash on delivery and direct transfer arrangements for orders.</p>
+            </div>
+            <div class="faq-item">
+                <h3>Do you have vegetarian options?</h3>
+                <p>We have fresh drinks and some light snack options that can be adjusted to your preference.</p>
             </div>
         </div>
     </section>
@@ -272,6 +387,22 @@
         </div>
     </section>
 
+    <section class="contact-info-section" id="contact-details">
+        <div class="contact-info-card">
+            <p class="eyebrow">Visit us</p>
+            <h3>Come by for a fresh bite</h3>
+            <p>12 Lekki-Epe Expressway, Lagos, Nigeria</p>
+            <p>Open daily: 8:00 AM – 9:00 PM</p>
+        </div>
+
+        <div class="contact-info-card">
+            <p class="eyebrow">Call us</p>
+            <h3>Need help placing an order?</h3>
+            <p>0707 726 6794</p>
+            <p>hello@obisnackspot.com</p>
+        </div>
+    </section>
+
     <div class="modal" id="foodModal" aria-hidden="true">
         <div class="modal-backdrop" data-close="true"></div>
         <div class="modal-content" role="dialog" aria-modal="true" aria-label="Food preview">
@@ -279,11 +410,18 @@
             <div class="modal-gallery">
                 <img id="modalMainImage" src="" alt="Food preview">
                 <div class="thumbnail-row" id="thumbnailRow"></div>
-            </div>
+            </div>ok
+
             <div class="modal-details">
                 <span class="modal-tag">Featured item</span>
                 <h3 id="modalTitle">Food item</h3>
                 <p id="modalDescription">Description</p>
+                <div id="modalExtras" class="modal-extras"></div>
+                <div class="quantity-box" aria-label="Quantity selector">
+                    <button type="button" class="qty-btn" data-action="decrease" aria-label="Decrease quantity">−</button>
+                    <span id="modalQuantity">1</span>
+                    <button type="button" class="qty-btn" data-action="increase" aria-label="Increase quantity">+</button>
+                </div>
                 <div class="modal-price-row">
                     <span id="modalPrice">₦0</span>
                     <button type="button" class="modal-order-btn">Order now</button>
@@ -293,7 +431,7 @@
     </div>
 
     <!-- About Section -->
-    <section id="about" class="about-section">
+    <section id="about" class="about-section accordion-panel" data-panel="about">
         <h2>About Us</h2>
         <p>
             Obi's Snack Spot is a friendly neighborhood food joint

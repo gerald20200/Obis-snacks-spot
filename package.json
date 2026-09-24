@@ -1,0 +1,25 @@
+{
+  "name": "obi-s snack-spot-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Obi's Snack Spot ordering website",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "food",
+    "backend",
+    "express",
+    "node",
+    "auth",
+    "admin"
+  ],
+  "author": "Copilot",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
