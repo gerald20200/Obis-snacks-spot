@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Obi's Snack Spot Admin</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #fff6ee;
+      color: #2f1b12;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1f120d;
+      color: white;
+      padding: 16px 24px;
+      border-radius: 14px;
+      margin-bottom: 24px;
+    }
+    .brand {
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+    .logout-btn, .primary-btn, .status-btn {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .logout-btn, .primary-btn {
+      background: #d35400;
+      color: white;
+    }
+    .login-shell {
+      max-width: 420px;
+      margin: 80px auto;
+      background: white;
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    }
+    .login-shell h2 {
+      margin-top: 0;
+      text-align: center;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .field input {
+      padding: 12px;
+      border: 1px solid #f0d8b6;
+      border-radius: 10px;
+      font-size: 1rem;
+    }
+    .dashboard {
+      display: none;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: white;
+      padding: 18px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.04);
+    }
+    .stat-label {
+      color: #6b4d3a;
+      font-size: 0.82rem;
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-top: 8px;
+    }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 24px;
+    }
+    .panel {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.04);
+    }
+    .panel h3 {
+      margin-top: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid #f4e1cf;
+      vertical-align: top;
+    }
+    .status-pill {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #ffe4c3;
+      color: #7a3d00;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .status-btn {
+      background: #f0f0f0;
+      color: #333;
+      margin-right: 6px;
+      margin-top: 6px;
+    }
+    .status-btn[data-status="pending"] { background: #ffe7bf; color: #9a5d00; }
+    .status-btn[data-status="preparing"] { background: #dfeaff; color: #1b4e7f; }
+    .status-btn[data-status="ready"] { background: #d9f7d9; color: #116b39; }
+    .status-btn[data-status="completed"] { background: #e9d5ff; color: #563c8f; }
+    .status-btn[data-status="cancelled"] { background: #ffd8d8; color: #9e1d1d; }
+    .menu-form {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .menu-form input, .menu-form select {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #f0d8b6;
+      font-size: 1rem;
+    }
+    .hidden { display: none; }
+    .error { color: #b3261e; margin-top: 10px; min-height: 20px; }
+    @media (max-width: 760px) {
+      .two-col { grid-template-columns: 1fr; }
+      .topbar { flex-direction: column; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="loginView" class="login-shell">
+      <h2>Admin Login</h2>
+      <form id="loginForm">
+        <div class="field">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" value="admin" required />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" value="admin123" required />
+        </div>
+        <button type="submit" class="primary-btn" style="width:100%;">Login</button>
+        <div id="loginError" class="error"></div>
+      </form>
+    </div>
+
+    <div id="dashboardView" class="dashboard">
+      <div class="topbar">
+        <div class="brand">Obi's Snack Spot Admin</div>
+        <button id="logoutBtn" class="logout-btn" type="button">Logout</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-label">Total Orders</div>
+          <div id="totalOrders" class="stat-value">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Revenue</div>
+          <div id="totalRevenue" class="stat-value">₦0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Menu Items</div>
+          <div id="menuCount" class="stat-value">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Pending</div>
+          <div id="pendingCount" class="stat-value">0</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <section class="panel">
+          <h3>Recent Orders</h3>
+          <div id="ordersList"></div>
+        </section>
+
+        <section class="panel">
+          <h3>Add Menu Item</h3>
+          <form id="menuForm" class="menu-form">
+            <input type="text" id="menuName" placeholder="Name" required />
+            <input type="number" id="menuPrice" placeholder="Price" min="1" required />
+            <select id="menuCategory" required>
+              <option value="meal">Meal</option>
+              <option value="snack">Snack</option>
+              <option value="drink">Drink</option>
+            </select>
+            <button type="submit" class="primary-btn">Add Item</button>
+          </form>
+          <div id="menuMessage" class="error"></div>
+
+          <h3 style="margin-top:28px;">Menu List</h3>
+          <div id="menuList"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

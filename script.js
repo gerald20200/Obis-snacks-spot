@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const navLinks = document.querySelectorAll('.nav-link');
   const accordionPanels = document.querySelectorAll('.accordion-panel');
   const yearSpan = document.getElementById('year');
-  const cards = document.querySelectorAll('.food-card');
+  let cards = document.querySelectorAll('.food-card');
   const categoryButtons = document.querySelectorAll('.filter-btn');
   const menuSearchInput = document.getElementById('menuSearch');
   const menuSearchBtn = document.getElementById('menuSearchBtn');
@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalQuantity = document.getElementById('modalQuantity');
   const modalClose = document.querySelector('.modal-close');
   const modalOrderBtn = document.querySelector('.modal-order-btn');
+  const modalStatus = document.getElementById('modalStatus');
 
   const foodData = {
     'Chicken Burger': {
@@ -180,6 +181,108 @@ document.addEventListener('DOMContentLoaded', () => {
     summaryText.innerHTML = `<strong>Selected:</strong> ${names}`;
   };
 
+  const renderMenuCards = (items) => {
+    const menuGrid = document.querySelector('.menu-grid');
+    if (!menuGrid) return;
+
+    if (!items.length) {
+      menuGrid.innerHTML = '<p class="no-results">No items available right now.</p>';
+      cards = document.querySelectorAll('.food-card');
+      return;
+    }
+
+    menuGrid.innerHTML = items.map((item) => `
+      <article class="food-card" data-category="${item.category || 'meal'}" data-name="${item.name}" data-price="${Number(item.price || 0)}" style="background-image: url('${item.image || 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80'}');">
+        <div class="food-info">
+          <h3>${item.name}</h3>
+          <p>${item.description || 'Freshly prepared and served with care.'}</p>
+          <div class="food-bottom">
+            <span>${formatMoney(item.price || 0)}</span>
+            <button type="button" class="order-btn">Order</button>
+          </div>
+        </div>
+      </article>
+    `).join('');
+
+    cards = document.querySelectorAll('.food-card');
+    cards.forEach((card) => {
+      const orderBtn = card.querySelector('.order-btn');
+      orderBtn?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        addToCart(card);
+        document.getElementById('checkoutForm')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      card.addEventListener('click', () => {
+        openModal(card);
+        selectCard(card);
+      });
+    });
+    applyMenuSearch();
+  };
+
+  const hydrateSiteContent = async () => {
+    try {
+      const [siteResponse, menuResponse] = await Promise.all([
+        fetch('/api/site'),
+        fetch('/api/menu')
+      ]);
+
+      if (siteResponse.ok) {
+        const siteData = await siteResponse.json();
+        const site = siteData.site || {};
+
+        const brand = document.querySelector('.nav-brand h1');
+        const heroTitle = document.querySelector('#home h2');
+        const heroText = document.querySelector('#home p');
+        const contactLocation = document.querySelector('.location-card p');
+        const contactWhatsApp = document.querySelector('.whatsapp-card p');
+        const footerContact = document.querySelectorAll('footer p');
+        const aboutText = document.querySelector('#about p');
+
+        if (brand) brand.textContent = site.businessName || brand.textContent;
+        if (heroTitle) heroTitle.textContent = site.heroTitle || heroTitle.textContent;
+        if (heroText) heroText.textContent = site.heroSubtitle || heroText.textContent;
+        if (contactLocation) contactLocation.textContent = `See where ${site.businessName || "Obi's Snack Spot"} is in Lagos, Nigeria`;
+        if (contactWhatsApp) contactWhatsApp.textContent = `Order your meal directly on WhatsApp`;
+        if (aboutText) aboutText.textContent = site.aboutText || aboutText.textContent;
+
+        const footerBlocks = document.querySelectorAll('footer > div');
+        if (footerBlocks.length > 0) {
+          const locBlock = footerBlocks[0];
+          const contactBlock = footerBlocks[1];
+          if (locBlock) {
+            locBlock.querySelector('h3').textContent = 'Opening Hours';
+            locBlock.querySelectorAll('p')[0].textContent = site.hours || locBlock.querySelectorAll('p')[0].textContent;
+            locBlock.querySelectorAll('p')[1].textContent = 'Fresh meals and drinks daily';
+          }
+          if (contactBlock) {
+            contactBlock.querySelector('h3').textContent = 'Contact';
+            contactBlock.querySelectorAll('p')[0].textContent = site.phone || contactBlock.querySelectorAll('p')[0].textContent;
+            contactBlock.querySelectorAll('p')[1].textContent = site.location || contactBlock.querySelectorAll('p')[1].textContent;
+          }
+        }
+
+        if (document.getElementById('contact-details')) {
+          const cards = document.querySelectorAll('.contact-info-card');
+          if (cards.length > 0) {
+            cards[0].querySelector('p:last-of-type')?.replaceChildren(document.createTextNode(site.location || 'Lagos, Nigeria'));
+            cards[1].querySelectorAll('p')[0].textContent = site.phone || cards[1].querySelectorAll('p')[0].textContent;
+            cards[1].querySelectorAll('p')[1].textContent = site.email || cards[1].querySelectorAll('p')[1].textContent;
+          }
+        }
+      }
+
+      if (menuResponse.ok) {
+        const menuData = await menuResponse.json();
+        const availableItems = (menuData.menu || []).filter((item) => item.available !== false);
+        renderMenuCards(availableItems);
+      }
+    } catch (error) {
+      console.warn('Unable to load dynamic site content.', error);
+    }
+  };
+
   const renderMealOptions = (name) => {
     const extrasContainer = document.getElementById('modalExtras');
     if (!extrasContainer) return;
@@ -308,6 +411,12 @@ document.addEventListener('DOMContentLoaded', () => {
     modalPrice.textContent = item.price;
     modalMainImage.src = item.images[0];
     modalMainImage.alt = name;
+    if (modalStatus) {
+      modalStatus.textContent = 'Select a meal to add to your order.';
+    }
+    if (modalOrderBtn) {
+      modalOrderBtn.textContent = 'Order now';
+    }
 
     renderMealOptions(name);
 
@@ -436,6 +545,20 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('checkoutForm')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const readJsonResponse = async (response) => {
+    const text = await response.text();
+
+    if (!text) {
+      throw new Error('The server returned an empty response. Please try again.');
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      throw new Error(`The server returned an invalid response: ${text.slice(0, 180)}`);
+    }
+  };
+
   const selectCard = (card) => {
     const name = card.dataset.name;
     const price = Number(card.dataset.price) || 0;
@@ -547,9 +670,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
       renderCart();
       updateSummary();
-      closeModal();
+      selectedQuantity = 1;
+      updateQuantityDisplay();
+      if (modalStatus) {
+        modalStatus.textContent = 'Added to cart. You can add another item now.';
+      }
+      if (modalOrderBtn) {
+        modalOrderBtn.textContent = 'Add another item';
+      }
     });
   }
+
+  const addCustomItemRow = () => {
+    const container = document.getElementById('customItemsContainer');
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.className = 'custom-order-row';
+    row.innerHTML = `
+      <input class="custom-item-name" type="text" placeholder="Type exactly what you want here, e.g. grilled fish and chips" />
+      <input class="custom-item-price" type="number" min="0" step="100" placeholder="Optional price" />
+    `;
+
+    container.appendChild(row);
+  };
+
+  document.getElementById('addCustomItemBtn')?.addEventListener('click', addCustomItemRow);
 
   if (checkoutForm) {
     checkoutForm.addEventListener('submit', async (event) => {
@@ -564,17 +710,27 @@ document.addEventListener('DOMContentLoaded', () => {
       const phone = document.getElementById('customerPhone').value.trim() || 'Not provided';
       const address = document.getElementById('customerAddress').value.trim() || 'Not provided';
       const notes = document.getElementById('orderNotes').value.trim() || 'No extra notes';
-      const customItemName = document.getElementById('customItemName').value.trim();
-      const customItemPrice = Number(document.getElementById('customItemPrice').value || 0) || 0;
+      const customRows = document.querySelectorAll('.custom-order-row');
+
+      const customItems = Array.from(customRows)
+        .map((row) => {
+          const customItemName = row.querySelector('.custom-item-name')?.value.trim();
+          const customItemPrice = Number(row.querySelector('.custom-item-price')?.value || 0) || 0;
+
+          if (!customItemName) return null;
+
+          return {
+            name: customItemName,
+            quantity: 1,
+            price: customItemPrice
+          };
+        })
+        .filter(Boolean);
 
       const orderItems = cart.map((item) => ({ name: item.name, quantity: item.quantity, price: item.price }));
 
-      if (customItemName) {
-        orderItems.push({
-          name: customItemName,
-          quantity: 1,
-          price: customItemPrice
-        });
+      if (customItems.length) {
+        orderItems.push(...customItems);
       }
 
       try {
@@ -586,23 +742,31 @@ document.addEventListener('DOMContentLoaded', () => {
             customerName,
             phone,
             address,
-            notes: customItemName ? `${notes} | Custom request: ${customItemName}` : notes
+            notes: customItems.length ? `${notes} | Custom requests: ${customItems.map((item) => item.name).join(', ')}` : notes
           })
         });
 
-        const result = await response.json();
+        const result = await readJsonResponse(response);
 
         if (!response.ok) {
           throw new Error(result.message || 'Order failed.');
         }
 
         const itemSummary = orderItems.map((item) => `${item.name}${item.quantity > 1 ? ` x${item.quantity}` : ''}`).join(', ');
-        alert(`${result.message}\nItems: ${itemSummary}\nFor: ${customerName}`);
-        cart.length = 0;
-        renderCart();
-        updateSummary();
-        checkoutForm.reset();
-        cards.forEach((card) => card.classList.remove('selected'));
+        const orderTotal = orderItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0);
+        const customRequestSummary = customItems.length ? customItems.map((item) => item.name).join(', ') : 'None';
+
+        sessionStorage.setItem('obiOrderSuccess', JSON.stringify({
+          message: result.message,
+          customerName,
+          itemSummary,
+          orderTotal,
+          phone,
+          address,
+          notes: notes ? `${notes} | Custom requests: ${customRequestSummary}` : `Custom requests: ${customRequestSummary}`
+        }));
+
+        window.location.href = 'thankyou.html';
       } catch (error) {
         alert(error.message || 'Unable to place your order right now.');
       }

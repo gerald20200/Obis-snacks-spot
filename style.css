@@ -7,14 +7,38 @@
 
 html {
     scroll-behavior: smooth;
+    background: linear-gradient(180deg, #fffaf3 0%, #f7d9a6 100%);
+    min-height: 100%;
 }
 
 body {
     font-family: Arial, sans-serif;
-    background-color: #fff8f0;
+    background: linear-gradient(180deg, #fffaf3 0%, #f7d9a6 100%) !important;
+    background-attachment: fixed;
     color: #333;
     line-height: 1.6;
     overflow-x: hidden;
+    min-height: 100vh;
+    width: 100%;
+    display: block;
+}
+
+section,
+footer,
+header,
+main,
+nav,
+article,
+div {
+    background: transparent;
+}
+
+img,
+video,
+iframe {
+    max-width: 100%;
+    height: auto;
+    display: block;
 }
 
 img {
@@ -883,6 +907,46 @@ footer p {
     font: inherit;
 }
 
+.custom-items-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.custom-items-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: #444;
+    font-weight: 600;
+}
+
+.custom-order-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 12px;
+}
+
+.custom-order-row input {
+    width: 100%;
+    border: 1px solid #f0d8b6;
+    background: #fffaf5;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font: inherit;
+}
+
+.secondary-btn {
+    background: #fff;
+    border: 1px solid #d35400;
+    color: #d35400;
+    border-radius: 999px;
+    padding: 9px 14px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
 .full-width {
     grid-column: 1 / -1;
 }
@@ -1139,6 +1203,13 @@ footer p {
     font-weight: bold;
 }
 
+.modal-status {
+    margin-top: 14px;
+    color: #7a4d35;
+    font-size: 14px;
+    min-height: 20px;
+}
+
 .modal-order-btn {
     border: none;
     background: #d35400;
@@ -1172,6 +1243,215 @@ footer p {
     .food-card.featured {
         grid-column: span 2;
     }
+
+    .checkout-panel,
+    .contact-dashboard,
+    .feature-grid,
+    .steps-grid,
+    .testimonials-grid,
+    .faq-grid,
+    .gallery-grid,
+    .contact-info-section {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .top-contact-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .navbar {
+        padding: 14px 18px;
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .nav-brand {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .nav-menu {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .nav-menu.active {
+        display: flex;
+    }
+
+    .menu-toggle {
+        display: flex;
+    }
+
+    .hero {
+        min-height: 420px;
+        padding: 54px 18px;
+    }
+
+    .hero h2 {
+        font-size: 2.1rem;
+    }
+
+    .hero p {
+        font-size: 1.05rem;
+    }
+
+    .menu-grid,
+    .feature-grid,
+    .steps-grid,
+    .testimonials-grid,
+    .faq-grid,
+    .gallery-grid,
+    .contact-dashboard,
+    .contact-info-section,
+    .checkout-panel,
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .food-card.featured {
+        grid-column: auto;
+        min-height: 360px;
+    }
+
+    .quick-order-inner {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .menu-search {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .menu-search button {
+        width: 100%;
+    }
+
+    .food-card p {
+        min-height: 0;
+    }
+
+    .order-summary {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .modal-content {
+        grid-template-columns: 1fr;
+        max-height: 88vh;
+    }
+
+    .thumbnail-row {
+        flex-direction: row;
+        max-height: none;
+        overflow-x: auto;
+    }
+
+    .thumbnail {
+        width: 72px;
+        min-width: 72px;
+    }
+}
+
+@media (max-width: 520px) {
+    .navbar h1 {
+        font-size: 1.1rem;
+    }
+
+    .section-heading h2,
+    .menu-section h2,
+    .about-section h2,
+    .contact-section h2 {
+        font-size: 1.8rem;
+    }
+
+    .contact-card,
+    .cart-card,
+    .checkout-form,
+    .feature-card,
+    .step-card,
+    .testimonial-card,
+    .faq-item {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .floating-whatsapp {
+        width: 54px;
+        height: 54px;
+        right: 14px;
+        bottom: 14px;
+        font-size: 26px;
+    }
+
+    .modal-details {
+        padding: 20px 16px 24px;
+    }
+}
+
+@media (max-width: 620px) {
+    .navbar {
+        padding: 14px 16px;
+    }
+
+    .nav-brand h1 {
+        font-size: 18px;
+    }
+
+    .hero {
+        padding: 48px 16px;
+        min-height: 360px;
+    }
+
+    .hero h2 {
+        font-size: clamp(26px, 9vw, 36px);
+    }
+
+    .hero p {
+        font-size: 16px;
+    }
+
+    .features-section,
+    .steps-section,
+    .testimonials-section,
+    .cta-section,
+    .gallery-section,
+    .faq-section,
+    .contact-info-section {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .food-card {
+        min-height: 240px;
+    }
+
+    .food-card img {
+        height: 200px;
+    }
+
+    .food-bottom {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .order-btn,
+    .summary-btn,
+    .cta-button,
+    .modal-order-btn,
+    .checkout-btn {
+        width: 100%;
+        justify-content: center;
+    }
 }
 
 @media (max-width: 900px) {
@@ -1187,6 +1467,10 @@ footer p {
 }
 
 @media (max-width: 768px) {
+    body {
+        background: linear-gradient(180deg, #fff4e1 0%, #f4c06d 100%) !important;
+    }
+
     .navbar {
         flex-direction: column;
         align-items: stretch;
@@ -1207,7 +1491,7 @@ footer p {
         flex-direction: column;
         gap: 12px;
         width: 100%;
-        background: rgba(163, 64, 0, 0.7);
+        background: rgba(163, 64, 0, 0.82);
         padding: 12px;
         border-radius: 8px;
     }
@@ -1247,12 +1531,16 @@ footer p {
     .faq-grid,
     .menu-grid,
     .contact-info-section,
-    .checkout-panel {
-        grid-template-columns: 1fr;
+    .checkout-panel,
+    .contact-dashboard,
+    .top-contact-row,
+    .form-grid,
+    .modal-content {
+        grid-template-columns: 1fr !important;
     }
 
     .gallery-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: 1fr !important;
     }
 
     .food-card.featured {
@@ -1261,30 +1549,21 @@ footer p {
     }
 
     .food-card img {
-        height: 260px;
+        height: 220px;
     }
 
-    .top-contact-row,
-    .contact-dashboard {
-        grid-template-columns: 1fr;
+    .food-card {
+        min-height: 260px;
     }
 
     .contact-card {
         min-height: 160px;
     }
 
-    .form-grid {
-        grid-template-columns: 1fr;
-    }
-
     .order-summary {
         flex-direction: column;
         text-align: center;
         border-radius: 16px;
-    }
-
-    .modal-content {
-        grid-template-columns: 1fr;
     }
 
     #modalMainImage {

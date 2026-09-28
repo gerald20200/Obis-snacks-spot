@@ -7,6 +7,70 @@
 
     <!-- Link CSS -->
     <link rel="stylesheet" href="style.css">
+    <style>
+        html, body {
+            background: linear-gradient(180deg, #fff7ed 0%, #f7c98a 100%) !important;
+            min-height: 100%;
+            margin: 0;
+        }
+
+        body {
+            background-attachment: fixed;
+        }
+
+        @media (max-width: 768px) {
+            html, body {
+                background: linear-gradient(180deg, #fff4e1 0%, #f4c06d 100%) !important;
+            }
+
+            .navbar {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 14px 16px;
+            }
+
+            .nav-brand {
+                width: 100%;
+            }
+
+            .nav-menu {
+                display: none;
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .nav-menu.active {
+                display: flex;
+            }
+
+            .hero {
+                min-height: 360px;
+                padding: 50px 16px;
+            }
+
+            .hero h2 {
+                font-size: 30px;
+            }
+
+            .menu-grid,
+            .feature-grid,
+            .steps-grid,
+            .testimonials-grid,
+            .faq-grid,
+            .gallery-grid,
+            .contact-dashboard,
+            .checkout-panel {
+                grid-template-columns: 1fr !important;
+            }
+
+            .food-card,
+            .contact-card,
+            .order-summary,
+            .cta-box {
+                width: 100%;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -237,15 +301,19 @@
                         <span>Address</span>
                         <input id="customerAddress" type="text" placeholder="Delivery address" />
                     </label>
+                    <div class="full-width custom-items-wrap">
+                        <div class="custom-items-header">
+                            <span>Items not on the menu?</span>
+                            <button type="button" id="addCustomItemBtn" class="secondary-btn">Add another item</button>
+                        </div>
+                        <div id="customItemsContainer">
+                            <div class="custom-order-row">
+                                <input class="custom-item-name" type="text" placeholder="Type exactly what you want here, e.g. grilled fish and chips" />
+                                <input class="custom-item-price" type="number" min="0" step="100" placeholder="Optional price" />
+                            </div>
+                        </div>
+                    </div>
                     <label class="full-width">
-                        <span>Item not on the menu?</span>
-                        <input id="customItemName" type="text" placeholder="Type exactly what you want here, e.g. grilled fish and chips" />
-                    </label>
-                    <label>
-                        <span>Custom item price (optional)</span>
-                        <input id="customItemPrice" type="number" min="0" step="100" placeholder="Optional price" />
-                    </label>
-                    <label>
                         <span>Order note</span>
                         <textarea id="orderNotes" rows="3" placeholder="Extra notes, allergy info, or delivery instructions"></textarea>
                     </label>
@@ -410,7 +478,7 @@
             <div class="modal-gallery">
                 <img id="modalMainImage" src="" alt="Food preview">
                 <div class="thumbnail-row" id="thumbnailRow"></div>
-            </div>ok
+            </div>
 
             <div class="modal-details">
                 <span class="modal-tag">Featured item</span>
@@ -426,6 +494,7 @@
                     <span id="modalPrice">₦0</span>
                     <button type="button" class="modal-order-btn">Order now</button>
                 </div>
+                <p id="modalStatus" class="modal-status">Select a meal to add to your order.</p>
             </div>
         </div>
     </div>
