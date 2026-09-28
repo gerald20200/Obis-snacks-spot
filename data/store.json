@@ -1,0 +1,116 @@
+{
+  "site": {
+    "businessName": "Obi's Snack Spot",
+    "heroTitle": "Welcome to Obi's Snack Spot",
+    "heroSubtitle": "Fresh snacks, tasty meals and cool drinks for everyone.",
+    "phone": "07077266794",
+    "email": "hello@obisnackspot.com",
+    "location": "12 Lekki-Epe Expressway, Lagos, Nigeria",
+    "hours": "Monday - Saturday: 8:00 AM - 9:00 PM | Sunday: 10:00 AM - 6:00 PM",
+    "whatsapp": "https://wa.me/2347077266794?text=Hello%20Obi's%20Snack%20Spot%2C%20I%20want%20to%20place%20an%20order.",
+    "aboutText": "Obi's Snack Spot is a friendly neighborhood food joint serving tasty and affordable meals, snacks and drinks. We are committed to giving our customers great food and excellent service."
+  },
+  "products": [
+    {
+      "id": 1,
+      "name": "Chicken Burger",
+      "description": "Delicious chicken burger with fresh vegetables.",
+      "price": 2500,
+      "category": "meal",
+      "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80",
+      "featured": false,
+      "available": true
+    },
+    {
+      "id": 2,
+      "name": "Shawarma",
+      "description": "Fresh shawarma filled with chicken and vegetables.",
+      "price": 2000,
+      "category": "meal",
+      "image": "https://www.afropots.com/wp-content/uploads/2025/04/item-ae2fb3eb-8442-49ed-b5cb-cb7908f823fd-1.jpg",
+      "featured": false,
+      "available": true
+    },
+    {
+      "id": 3,
+      "name": "Meat Pie",
+      "description": "Freshly baked meat pie with a tasty filling.",
+      "price": 1000,
+      "category": "snack",
+      "image": "https://simshomekitchen.com/wp-content/uploads/2020/06/meat-pie-and-dough-recipe.png",
+      "featured": false,
+      "available": true
+    },
+    {
+      "id": 4,
+      "name": "Jollof Rice & Chicken",
+      "description": "Special Nigerian jollof rice served with chicken.",
+      "price": 3000,
+      "category": "meal",
+      "image": "https://dodptt9f4zk9h.cloudfront.net/stores/139851/products/5190c507d7660dcc6a6db675eade7063e257f946.jpeg",
+      "featured": true,
+      "available": true
+    },
+    {
+      "id": 5,
+      "name": "French Fries",
+      "description": "Crispy golden fries served hot and fresh.",
+      "price": 1500,
+      "category": "snack",
+      "image": "https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=900&q=80",
+      "featured": false,
+      "available": true
+    },
+    {
+      "id": 6,
+      "name": "Cold Drink",
+      "description": "Choose from a variety of refreshing soft drinks.",
+      "price": 800,
+      "category": "drink",
+      "image": "https://images.unsplash.com/photo-1622483767028-3f66f2b7420a?auto=format&fit=crop&w=900&q=80",
+      "featured": false,
+      "available": true
+    },
+    {
+      "id": 7,
+      "name": "Fresh Fruit Juice",
+      "description": "Sweet and chilled fruit juice served fresh.",
+      "price": 1200,
+      "category": "drink",
+      "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=80",
+      "featured": true,
+      "available": true
+    },
+    {
+      "id": 8,
+      "name": "Coca-Cola",
+      "description": "Classic chilled cola served ice-cold and fizzy.",
+      "price": 700,
+      "category": "drink",
+      "image": "https://www.supermart.ng/cdn/shop/files/ALTCITD827.jpg?v=1689111605",
+      "featured": false,
+      "available": true
+    },
+    {
+      "id": 9,
+      "name": "Lemonade",
+      "description": "Freshly squeezed lemon drink with a sweet citrus kick.",
+      "price": 900,
+      "category": "drink",
+      "image": "https://images.unsplash.com/photo-1497534446932-c925b458314e?auto=format&fit=crop&w=900&q=80",
+      "featured": false,
+      "available": true
+    },
+    {
+      "id": 10,
+      "name": "Red Wine",
+      "description": "Rich and smooth red wine for a relaxing evening.",
+      "price": 4500,
+      "category": "drink",
+      "image": "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=900&q=80",
+      "featured": false,
+      "available": true
+    }
+  ],
+  "orders": []
+}

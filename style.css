@@ -1,4 +1,15 @@
 ﻿/* General styling */
+:root {
+    --site-red: #E53935;
+    --site-red-dark: #c62828;
+    --site-yellow: #FFC107;
+    --site-yellow-deep: #FFB300;
+    --site-white: #ffffff;
+    --site-cream: #fff8e1;
+    --site-text: #1f1f1f;
+    --site-muted: #555555;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -7,15 +18,15 @@
 
 html {
     scroll-behavior: smooth;
-    background: linear-gradient(180deg, #fffaf3 0%, #f7d9a6 100%);
+    background: linear-gradient(180deg, var(--site-white) 0%, var(--site-cream) 100%);
     min-height: 100%;
 }
 
 body {
     font-family: Arial, sans-serif;
-    background: linear-gradient(180deg, #fffaf3 0%, #f7d9a6 100%) !important;
+    background: linear-gradient(180deg, var(--site-white) 0%, var(--site-cream) 100%) !important;
     background-attachment: fixed;
-    color: #333;
+    color: var(--site-text);
     line-height: 1.6;
     overflow-x: hidden;
     min-height: 100vh;
@@ -59,7 +70,7 @@ header {
 }
 
 .navbar {
-    background-color: #d35400;
+    background-color: var(--site-red);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -108,7 +119,7 @@ header {
 }
 
 .nav-link.active {
-    color: #ffe0b2;
+    color: var(--site-yellow);
 }
 
 .accordion-panel {
@@ -185,8 +196,8 @@ header {
 }
 
 .button {
-    background-color: #d35400;
-    color: white;
+    background-color: var(--site-yellow);
+    color: var(--site-text);
     text-decoration: none;
     padding: 12px 25px;
     border-radius: 5px;
@@ -194,7 +205,7 @@ header {
 }
 
 .button:hover {
-    background-color: #a04000;
+    background-color: var(--site-yellow-deep);
 }
 
 .section-heading {
@@ -203,7 +214,7 @@ header {
 }
 
 .eyebrow {
-    color: #d35400;
+    color: var(--site-red);
     text-transform: uppercase;
     letter-spacing: 0.12em;
     font-size: 12px;
@@ -487,7 +498,7 @@ header {
 
 .filter-btn.active,
 .filter-btn:hover {
-    background: #d35400;
+    background: var(--site-red);
     color: white;
 }
 
