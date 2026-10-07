@@ -122,6 +122,14 @@ header {
     color: var(--site-yellow);
 }
 
+.logout-link {
+    color: #fff4e8;
+}
+
+.logout-link:hover {
+    color: var(--site-yellow);
+}
+
 .accordion-panel {
     display: none;
 }

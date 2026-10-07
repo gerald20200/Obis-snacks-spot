@@ -1,13 +1,58 @@
+require('dotenv').config();
+
 const express = require('express');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
+const { OAuth2Client } = require('google-auth-library');
 const path = require('path');
+const crypto = require('node:crypto');
+const ordersRouter = require('./routes/orders');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'obi-snack-spot-secret-key';
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const JWT_SECRET = process.env.JWT_SECRET;
+const AUTH_PIN = process.env.AUTH_PIN;
+const MONGODB_URI = process.env.MONGODB_URI;
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@obisnackspot.com';
+const COOKIE_SECURE = process.env.COOKIE_SECURE === 'true';
+const COOKIE_NAME = 'obi_snack_session';
+const PENDING_COOKIE_NAME = 'obi_snack_pending';
+const SESSION_TTL_SECONDS = 8 * 60 * 60;
+const PENDING_TTL_SECONDS = 15 * 60;
+const COOKIE_PROPERTIES = {
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: COOKIE_SECURE,
+  path: '/',
+  maxAge: SESSION_TTL_SECONDS * 1000
+};
+
+if (!JWT_SECRET || !AUTH_PIN) {
+  if (NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET and AUTH_PIN must be configured in production.');
+  }
+
+  console.warn('JWT_SECRET and AUTH_PIN are not configured. A temporary development session will be used, but production startup requires both values.');
+}
+
+if (NODE_ENV === 'production' && !MONGODB_URI) {
+  throw new Error('MONGODB_URI must be configured in production.');
+}
+
+const effectiveJwtSecret = JWT_SECRET || crypto.randomBytes(48).toString('hex');
+const effectiveAuthPin = AUTH_PIN || 'development-only-pin-change-before-production';
+const googleClient = process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+  ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_CALLBACK_URL)
+  : null;
 const STORE_PATH = path.join(__dirname, 'data', 'store.json');
+const databaseConnection = MONGODB_URI
+  ? mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
+  : null;
 
 app.disable('x-powered-by');
 
@@ -53,13 +98,15 @@ const readStore = () => {
         featured: Boolean(product.featured),
         available: product.available !== false
       })) : [...defaultProducts],
-      orders: Array.isArray(parsed.orders) ? parsed.orders : []
+      orders: Array.isArray(parsed.orders) ? parsed.orders : [],
+      customers: Array.isArray(parsed.customers) ? parsed.customers : []
     };
   } catch (error) {
     return {
       site: { ...defaultSite },
       products: [...defaultProducts],
-      orders: []
+      orders: [],
+      customers: []
     };
   }
 };
@@ -77,24 +124,54 @@ const persistStore = (data) => {
 
 const initialStore = readStore();
 let menu = [...initialStore.products];
-let orders = [...initialStore.orders];
+let customers = Array.isArray(initialStore.customers) ? initialStore.customers.map((customer) => ({
+  ...customer,
+  role: customer.role || 'customer'
+})) : [];
 let siteSettings = { ...initialStore.site };
-const orderStatuses = ['pending', 'processing', 'completed', 'cancelled'];
+const orderStatuses = ['pending', 'confirmed', 'preparing', 'completed', 'cancelled'];
 
 const adminUsers = [
   {
     id: 1,
-    username: 'admin',
-    email: 'admin@obisnackspot.com',
-    passwordHash: bcrypt.hashSync('obis snacks', 10),
+    username: ADMIN_USERNAME,
+    email: ADMIN_EMAIL,
+    passwordHash: bcrypt.hashSync(ADMIN_PASSWORD, 10),
     role: 'admin',
     createdAt: new Date().toISOString()
   }
 ];
 
+const customerUserByEmail = new Map();
 const menuById = new Map(menu.map((item) => [item.id, item]));
 const adminUserByUsername = new Map(adminUsers.map((user) => [user.username.toLowerCase(), user]));
 const adminUserByEmail = new Map(adminUsers.map((user) => [user.email.toLowerCase(), user]));
+
+const refreshCustomerMap = () => {
+  customerUserByEmail.clear();
+  customers.forEach((customer) => {
+    customerUserByEmail.set(String(customer.email).toLowerCase(), customer);
+  });
+};
+
+refreshCustomerMap();
+
+const sanitizeCustomer = (customer) => ({
+  id: customer.id,
+  fullName: customer.fullName,
+  email: customer.email,
+  phone: customer.phone,
+  role: customer.role || 'customer',
+  createdAt: customer.createdAt
+});
+
+const sanitizeOrder = (order) => ({
+  ...order,
+  customerName: order.customerName || 'Walk-in customer',
+  phone: order.phone || 'Not provided',
+  address: order.address || 'Not provided',
+  status: order.status || 'pending'
+});
 
 const normalizeOrderItems = (rawItems) => {
   const items = Array.isArray(rawItems) ? rawItems : [];
@@ -130,17 +207,64 @@ const getOrderTotal = (items) => {
 };
 
 const generateToken = (user) => {
-  return jwt.sign(
-    {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role
-    },
-    JWT_SECRET,
-    { expiresIn: '8h' }
-  );
+  const payload = {
+    id: user.id,
+    email: user.email,
+    role: user.role
+  };
+
+  if (user.role === 'admin') {
+    payload.username = user.username;
+  }
+
+  if (user.role === 'customer') {
+    payload.fullName = user.fullName;
+    payload.phone = user.phone;
+  }
+
+  return jwt.sign(payload, effectiveJwtSecret, { expiresIn: '8h' });
 };
+
+const getCookie = (req, name) => {
+  const header = req.headers.cookie || '';
+  const match = header.split(';').map((entry) => entry.trim()).find((entry) => entry.startsWith(`${name}=`));
+  return match ? decodeURIComponent(match.slice(name.length + 1)) : null;
+};
+
+const setCookie = (res, name, value, options = {}) => {
+  const attributes = [
+    `${name}=${encodeURIComponent(value)}`,
+    `Path=${options.path || '/'}`,
+    `Max-Age=${options.maxAge || SESSION_TTL_SECONDS}`,
+    'HttpOnly',
+    'SameSite=Lax'
+  ];
+
+  if (COOKIE_SECURE || options.secure) attributes.push('Secure');
+  res.setHeader('Set-Cookie', attributes.join('; '));
+};
+
+const clearCookie = (res, name) => setCookie(res, name, '', { maxAge: 0 });
+
+const createSessionToken = (user) => jwt.sign({
+  id: user.id,
+  email: user.email,
+  role: user.role,
+  fullName: user.fullName,
+  phone: user.phone,
+  type: 'session',
+  issuedAt: Math.floor(Date.now() / 1000)
+}, effectiveJwtSecret, { expiresIn: SESSION_TTL_SECONDS });
+
+const createPendingToken = (identity) => jwt.sign({
+  ...identity,
+  type: 'pending-google',
+  issuedAt: Math.floor(Date.now() / 1000)
+}, effectiveJwtSecret, { expiresIn: PENDING_TTL_SECONDS });
+
+const validReturnTo = (value) => typeof value === 'string' && ['/index.html', '/thankyou.html'].includes(value)
+  ? value
+  : '/index.html';
 
 const authenticate = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -152,12 +276,82 @@ const authenticate = (req, res, next) => {
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, effectiveJwtSecret);
     req.user = decoded;
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Invalid or expired token.' });
   }
+};
+
+const optionalAuthenticate = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return next();
+
+  try {
+    req.user = jwt.verify(authHeader.split(' ')[1], effectiveJwtSecret);
+    return next();
+  } catch (error) {
+    return res.status(401).json({ message: 'Invalid or expired token.' });
+  }
+};
+
+const requireDatabase = async (req, res, next) => {
+  if (!databaseConnection) {
+    return res.status(503).json({ message: 'Order storage is not configured. Add MONGODB_URI.' });
+  }
+
+  try {
+    await databaseConnection;
+    return next();
+  } catch (error) {
+    return res.status(503).json({ message: 'Order storage is temporarily unavailable. Please try again.' });
+  }
+};
+
+const requirePageAuthentication = (req, res, next) => {
+  const token = getCookie(req, COOKIE_NAME);
+  if (!token) {
+    const returnTo = encodeURIComponent(req.originalUrl.split('?')[0]);
+    return res.redirect(`/login.html?returnTo=${returnTo}`);
+  }
+
+  try {
+    const decoded = jwt.verify(token, effectiveJwtSecret);
+    if (decoded.type !== 'session') throw new Error('Invalid session type.');
+    req.user = decoded;
+    next();
+  } catch (error) {
+    clearCookie(res, COOKIE_NAME);
+    const returnTo = encodeURIComponent(req.originalUrl.split('?')[0]);
+    return res.redirect(`/login.html?returnTo=${returnTo}`);
+  }
+};
+
+const requirePin = (req, res, next) => {
+  const pendingToken = getCookie(req, PENDING_COOKIE_NAME);
+  try {
+    const decoded = jwt.verify(pendingToken, effectiveJwtSecret);
+    if (decoded.type !== 'pending-google') throw new Error('Invalid pending identity.');
+    req.pendingGoogleIdentity = decoded;
+    next();
+  } catch (error) {
+    clearCookie(res, PENDING_COOKIE_NAME);
+    return res.status(401).json({ message: 'Google sign-in could not be completed. Please try again.' });
+  }
+};
+
+const pinMatches = (pin) => crypto.timingSafeEqual(
+  crypto.scryptSync(String(pin), 'obi-snack-pin-salt', 64),
+  crypto.scryptSync(effectiveAuthPin, 'obi-snack-pin-salt', 64)
+);
+
+const customerOnly = (req, res, next) => {
+  if (!req.user || req.user.role !== 'customer') {
+    return res.status(403).json({ message: 'Customer access required.' });
+  }
+
+  next();
 };
 
 const adminOnly = (req, res, next) => {
@@ -168,8 +362,23 @@ const adminOnly = (req, res, next) => {
   next();
 };
 
+const getCustomerById = (id) => customers.find((customer) => customer.id === Number(id));
+
+const getStatusName = (status) => {
+  const normalized = String(status || '').toLowerCase();
+
+  if (normalized === 'processing') return 'preparing';
+  if (normalized === 'ready') return 'ready';
+  if (normalized === 'confirmed') return 'confirmed';
+  if (normalized === 'pending') return 'pending';
+  if (normalized === 'completed') return 'completed';
+  if (normalized === 'cancelled') return 'cancelled';
+  if (normalized === 'preparing') return 'preparing';
+
+  return 'pending';
+};
+
 app.use(express.json({ limit: '1mb' }));
-app.use(express.static(__dirname, { index: false }));
 
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
@@ -185,9 +394,27 @@ app.get('/style.css', (req, res) => {
   res.sendFile(path.join(__dirname, 'style.css'));
 });
 
+app.get('/login.css', (req, res) => {
+  res.type('text/css');
+  res.sendFile(path.join(__dirname, 'login.css'));
+});
+
+app.get('/auth.js', (req, res) => {
+  res.type('application/javascript');
+  res.sendFile(path.join(__dirname, 'auth.js'));
+});
+
 app.get('/script.js', (req, res) => {
   res.type('application/javascript');
   res.sendFile(path.join(__dirname, 'script.js'));
+});
+
+app.get('/login.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+app.get('/index.html', requirePageAuthentication, (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.get('/admin.html', (req, res) => {
@@ -212,37 +439,183 @@ app.get('/admin.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'admin.js'));
 });
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'redirect.html'));
-});
-
-app.get('/thankyou.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'thankyou.html'));
+app.get('/', requirePageAuthentication, (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: "Obi's Snack Spot Backend" });
 });
 
+app.get('/api/auth/status', (req, res) => {
+  const token = getCookie(req, COOKIE_NAME);
+  if (!token) return res.json({ authenticated: false });
+
+  try {
+    const decoded = jwt.verify(token, effectiveJwtSecret);
+    if (decoded.type !== 'session') throw new Error('Invalid session type.');
+    return res.json({ authenticated: true, user: { email: decoded.email, fullName: decoded.fullName, role: decoded.role }, returnTo: '/index.html' });
+  } catch (error) {
+    clearCookie(res, COOKIE_NAME);
+    return res.json({ authenticated: false });
+  }
+});
+
+app.use('/api', requireDatabase, optionalAuthenticate, ordersRouter);
+
+app.post('/api/auth/pin', (req, res) => {
+  const { pin } = req.body || {};
+  if (typeof pin !== 'string' || !pin.trim()) {
+    return res.status(400).json({ message: 'Enter your access PIN.' });
+  }
+
+  if (pin.length > 20 || !pinMatches(pin)) {
+    return res.status(401).json({ message: 'The access PIN is incorrect.' });
+  }
+
+  const pendingToken = getCookie(req, PENDING_COOKIE_NAME);
+  let identity = null;
+  if (pendingToken) {
+    try {
+      identity = jwt.verify(pendingToken, effectiveJwtSecret);
+      if (identity.type !== 'pending-google') throw new Error('Invalid pending identity.');
+    } catch (error) {
+      clearCookie(res, PENDING_COOKIE_NAME);
+      return res.status(401).json({ message: 'The authentication request has expired.' });
+    }
+  }
+
+  const sessionUser = {
+    id: identity?.googleId || Date.now(),
+    email: identity?.email || 'pin-user@example.com',
+    fullName: identity?.fullName || 'Verified customer',
+    phone: identity?.phone || '',
+    role: 'customer',
+    source: identity?.source || 'pin'
+  };
+  const returnTo = identity ? validReturnTo(identity.returnTo) : validReturnTo(req.body.returnTo);
+
+  clearCookie(res, PENDING_COOKIE_NAME);
+  setCookie(res, COOKIE_NAME, createSessionToken(sessionUser));
+  return res.json({ message: 'Authentication complete.', returnTo });
+});
+
+app.post('/api/auth/google/start', (req, res) => {
+  if (!googleClient) {
+    return res.status(503).json({ message: 'Google sign-in is not configured.' });
+  }
+
+  const returnTo = typeof req.body?.returnTo === 'string' && ['/index.html', '/thankyou.html'].includes(req.body.returnTo)
+    ? req.body.returnTo
+    : '/index.html';
+  const state = crypto.randomBytes(24).toString('base64url');
+  const authorizationUrl = googleClient.generateAuthUrl({
+    access_type: 'offline',
+    prompt: 'select_account',
+    state,
+    scope: ['openid', 'email', 'profile']
+  });
+
+  setCookie(res, 'obi_snack_oauth_state', JSON.stringify({ state, returnTo }), { maxAge: 10 * 60, secure: COOKIE_SECURE });
+  return res.json({ authorizationUrl, returnTo });
+});
+
+app.get('/api/auth/google/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+  if (error || !code || !state) {
+    return res.redirect('/login.html?error=Google%20authentication%20was%20not%20completed.%20Please%20try%20again.');
+  }
+
+  if (!googleClient) {
+    return res.redirect('/login.html?error=Google%20authentication%20is%20not%20configured.');
+  }
+
+  const expectedStateCookie = getCookie(req, 'obi_snack_oauth_state');
+  clearCookie(res, 'obi_snack_oauth_state');
+  let expectedState = null;
+  let returnTo = '/index.html';
+
+  try {
+    const parsedCookie = JSON.parse(expectedStateCookie || '{}');
+    expectedState = parsedCookie.state;
+    returnTo = ['/index.html', '/thankyou.html'].includes(parsedCookie.returnTo) ? parsedCookie.returnTo : '/index.html';
+  } catch (error) {
+    // Invalid cookie data is rejected below.
+  }
+
+  const expectedStateBuffer = expectedState ? Buffer.from(expectedState) : Buffer.alloc(0);
+  const receivedStateBuffer = Buffer.from(state);
+  if (!expectedState || expectedStateBuffer.length !== receivedStateBuffer.length
+    || !crypto.timingSafeEqual(expectedStateBuffer, receivedStateBuffer)) {
+    return res.redirect('/login.html?error=Google%20authentication%20state%20is%20invalid.%20Please%20try%20again.');
+  }
+
+  try {
+    const token = await googleClient.getToken(code);
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token.tokens.id_token,
+      audience: googleClient.clientId
+    });
+    const payload = ticket.getPayload();
+    if (!payload?.email || !payload.sub) {
+      return res.redirect('/login.html?error=Google%20authentication%20did%20not%20return%20a%20valid%20account.');
+    }
+
+    const pending = createPendingToken({
+      googleId: payload.sub,
+      email: payload.email.toLowerCase(),
+      fullName: payload.name || payload.email,
+      phone: '',
+      source: 'google',
+      returnTo
+    });
+    setCookie(res, PENDING_COOKIE_NAME, pending, { maxAge: PENDING_TTL_SECONDS, secure: COOKIE_SECURE });
+    return res.redirect('/login.html?google=ready');
+  } catch (error) {
+    console.error('Google OAuth verification failed:', error.message);
+    return res.redirect('/login.html?error=Google%20authentication%20could%20not%20be%20verified.%20Please%20try%20again.');
+  }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  clearCookie(res, COOKIE_NAME);
+  clearCookie(res, PENDING_COOKIE_NAME);
+  clearCookie(res, 'obi_snack_oauth_state');
+  res.json({ message: 'Logged out successfully.' });
+});
+
 app.post('/api/auth/login', (req, res) => {
   const { username, email, password } = req.body || {};
 
   if (!password || (!username && !email)) {
-    return res.status(400).json({ message: 'Username or email and password are required.' });
+    return res.status(400).json({ message: 'Email or username and password are required.' });
+  }
+
+  const customer = email
+    ? customerUserByEmail.get(String(email).toLowerCase())
+    : null;
+
+  if (customer && bcrypt.compareSync(password, customer.passwordHash)) {
+    const token = generateToken(customer);
+    return res.json({
+      message: 'Login successful.',
+      token,
+      user: sanitizeCustomer(customer)
+    });
   }
 
   const user = username
     ? adminUserByUsername.get(String(username).toLowerCase())
-    : adminUserByEmail.get(String(email).toLowerCase());
+    : adminUserByEmail.get(String(email || '').toLowerCase());
 
   if (!user) {
-    return res.status(401).json({ message: 'Invalid credentials.' });
+    return res.status(401).json({ message: 'Incorrect email or password.' });
   }
 
   const isValid = bcrypt.compareSync(password, user.passwordHash);
 
   if (!isValid) {
-    return res.status(401).json({ message: 'Invalid credentials.' });
+    return res.status(401).json({ message: 'Incorrect email or password.' });
   }
 
   const token = generateToken(user);
@@ -259,44 +632,67 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
-app.post('/api/auth/register', authenticate, adminOnly, (req, res) => {
-  const { username, email, password } = req.body || {};
+app.post('/api/auth/register', (req, res) => {
+  const { fullName, email, phone, password, confirmPassword } = req.body || {};
 
-  if (!username || !email || !password) {
-    return res.status(400).json({ message: 'Username, email, and password are required.' });
+  if (!fullName || !email || !phone || !password || !confirmPassword) {
+    return res.status(400).json({ message: 'All fields are required.' });
   }
 
-  const exists = adminUserByUsername.has(String(username).toLowerCase()) || adminUserByEmail.has(String(email).toLowerCase());
-
-  if (exists) {
-    return res.status(409).json({ message: 'User already exists.' });
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailPattern.test(String(email).trim())) {
+    return res.status(400).json({ message: 'Please enter a valid email address.' });
   }
 
-  const newUser = {
+  if (String(password).length < 6) {
+    return res.status(400).json({ message: 'Password must be at least 6 characters long.' });
+  }
+
+  if (String(password) !== String(confirmPassword)) {
+    return res.status(400).json({ message: 'Passwords do not match.' });
+  }
+
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const existingCustomer = customerUserByEmail.get(normalizedEmail);
+
+  if (existingCustomer) {
+    return res.status(409).json({ message: 'This email is already registered.' });
+  }
+
+  const newCustomer = {
     id: Date.now(),
-    username,
-    email,
+    fullName: String(fullName).trim(),
+    email: normalizedEmail,
+    phone: String(phone).trim(),
     passwordHash: bcrypt.hashSync(password, 10),
-    role: 'admin',
+    role: 'customer',
     createdAt: new Date().toISOString()
   };
 
-  adminUsers.push(newUser);
-  adminUserByUsername.set(newUser.username.toLowerCase(), newUser);
-  adminUserByEmail.set(newUser.email.toLowerCase(), newUser);
+  customers.push(newCustomer);
+  refreshCustomerMap();
+  persistStore({ site: siteSettings, products: menu, customers });
 
-  res.status(201).json({
-    message: 'Admin user created successfully.',
-    user: {
-      id: newUser.id,
-      username: newUser.username,
-      email: newUser.email,
-      role: newUser.role
-    }
+  const token = generateToken(newCustomer);
+
+  return res.status(201).json({
+    message: 'Account created successfully.',
+    token,
+    user: sanitizeCustomer(newCustomer)
   });
 });
 
 app.get('/api/auth/me', authenticate, (req, res) => {
+  if (req.user.role === 'customer') {
+    const customer = getCustomerById(req.user.id);
+
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found.' });
+    }
+
+    return res.json({ user: sanitizeCustomer(customer) });
+  }
+
   const user = adminUsers.find((entry) => entry.id === req.user.id);
 
   if (!user) {
@@ -311,6 +707,42 @@ app.get('/api/auth/me', authenticate, (req, res) => {
       role: user.role
     }
   });
+});
+
+app.get('/customer-login.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'customer-login.html'));
+});
+
+app.get('/customer-signup.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'customer-signup.html'));
+});
+
+app.get('/customer-account.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'customer-account.html'));
+});
+
+app.get('/customer-login', (req, res) => {
+  res.redirect('/customer-login.html');
+});
+
+app.get('/customer-signup', (req, res) => {
+  res.redirect('/customer-signup.html');
+});
+
+app.get('/customer-account', (req, res) => {
+  res.redirect('/customer-account.html');
+});
+
+app.get('/index.html', requirePageAuthentication, (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/thankyou.html', requirePageAuthentication, (req, res) => {
+  res.sendFile(path.join(__dirname, 'thankyou.html'));
+});
+
+app.get('/customer-account.html', requirePageAuthentication, (req, res) => {
+  res.sendFile(path.join(__dirname, 'customer-account.html'));
 });
 
 app.get('/api/site', (req, res) => {
@@ -332,7 +764,7 @@ app.put('/api/site', authenticate, adminOnly, (req, res) => {
     aboutText: payload.aboutText || siteSettings.aboutText
   };
 
-  persistStore({ site: siteSettings, products: menu, orders });
+  persistStore({ site: siteSettings, products: menu, customers });
 
   return res.json({ message: 'Website content updated successfully.', site: siteSettings });
 });
@@ -359,127 +791,27 @@ app.get('/api/menu/:id', (req, res) => {
   res.json({ item });
 });
 
-app.get('/api/orders', (req, res) => {
-  const { status } = req.query;
-
-  if (status) {
-    const filtered = orders.filter((order) => order.status === status);
-    return res.json({ orders: filtered, count: filtered.length });
-  }
-
-  res.json({ orders, count: orders.length });
-});
-
-app.get('/api/orders/:id', (req, res) => {
-  const order = orders.find((entry) => entry.id === Number(req.params.id));
-
-  if (!order) {
-    return res.status(404).json({ message: 'Order not found.' });
-  }
-
-  res.json({ order });
-});
-
-app.get('/api/dashboard', authenticate, adminOnly, (req, res) => {
-  const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
-  const statuses = orderStatuses.reduce((acc, status) => {
-    acc[status] = orders.filter((order) => order.status === status).length;
-    return acc;
-  }, {});
-
-  res.json({
-    totalOrders: orders.length,
-    totalRevenue,
-    menuItems: menu.length,
-    statuses,
-    recentOrders: orders.slice(-5).reverse()
-  });
-});
-
-app.post('/api/orders', (req, res) => {
+app.get('/api/dashboard', authenticate, adminOnly, async (req, res, next) => {
   try {
-    const { itemName, items, customerName, phone, notes, address } = req.body || {};
-    const rawItems = Array.isArray(items)
-      ? items
-      : Array.isArray(itemName)
-        ? itemName
-        : itemName
-          ? [itemName]
-          : [];
+    const [orders, totalRevenue] = await Promise.all([
+      Order.find().sort({ createdAt: -1 }).lean(),
+      Order.aggregate([{ $group: { _id: null, total: { $sum: '$total' } } }])
+    ]);
+    const statuses = orderStatuses.reduce((acc, status) => {
+      acc[status] = orders.filter((order) => order.status === status).length;
+      return acc;
+    }, {});
 
-    const normalizedItems = normalizeOrderItems(rawItems);
-
-    if (!normalizedItems.length) {
-      return res.status(400).json({ message: 'At least one item is required.' });
-    }
-
-    const order = {
-      id: Date.now(),
-      items: normalizedItems,
-      total: getOrderTotal(normalizedItems),
-      customerName: customerName || 'Walk-in customer',
-      phone: phone || 'Not provided',
-      address: address || 'Not provided',
-      notes: notes || 'No extra notes',
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    };
-
-    orders.push(order);
-    persistStore({ site: siteSettings, products: menu, orders });
-
-    return res.status(201).json({
-      message: 'Order received successfully.',
-      order
+    return res.json({
+      totalOrders: orders.length,
+      totalRevenue: totalRevenue[0]?.total || 0,
+      menuItems: menu.length,
+      statuses,
+      recentOrders: orders.slice(0, 5)
     });
   } catch (error) {
-    console.error('Order creation failed:', error);
-    return res.status(500).json({ message: 'Unable to place your order right now.' });
+    return next(error);
   }
-});
-
-app.patch('/api/orders/:id/status', authenticate, adminOnly, (req, res) => {
-  const { status } = req.body || {};
-  const order = orders.find((entry) => entry.id === Number(req.params.id));
-
-  if (!order) {
-    return res.status(404).json({ message: 'Order not found.' });
-  }
-
-  const normalizedStatus = String(status || '').toLowerCase();
-  const validStatus = orderStatuses.includes(normalizedStatus)
-    ? normalizedStatus
-    : normalizedStatus === 'preparing' || normalizedStatus === 'ready'
-      ? 'processing'
-      : null;
-
-  if (!validStatus) {
-    return res.status(400).json({ message: 'Invalid order status.' });
-  }
-
-  order.status = validStatus;
-  persistStore({ site: siteSettings, products: menu, orders });
-
-  res.json({
-    message: 'Order status updated successfully.',
-    order
-  });
-});
-
-app.delete('/api/orders/:id', authenticate, adminOnly, (req, res) => {
-  const index = orders.findIndex((entry) => entry.id === Number(req.params.id));
-
-  if (index === -1) {
-    return res.status(404).json({ message: 'Order not found.' });
-  }
-
-  const [deletedOrder] = orders.splice(index, 1);
-  persistStore({ site: siteSettings, products: menu, orders });
-
-  res.json({
-    message: 'Order deleted successfully.',
-    order: deletedOrder
-  });
 });
 
 app.get('/api/admin/menu', authenticate, adminOnly, (req, res) => {
@@ -506,7 +838,7 @@ app.post('/api/admin/menu', authenticate, adminOnly, (req, res) => {
 
   menu.push(newItem);
   menuById.set(newItem.id, newItem);
-  persistStore({ site: siteSettings, products: menu, orders });
+  persistStore({ site: siteSettings, products: menu, customers });
 
   res.status(201).json({
     message: 'Menu item added successfully.',
@@ -528,7 +860,7 @@ app.put('/api/admin/menu/:id', authenticate, adminOnly, (req, res) => {
   item.category = category ? String(category).toLowerCase() : item.category;
   item.description = description || item.description || '';
   item.image = image || item.image || '';
-  persistStore({ site: siteSettings, products: menu, orders });
+  persistStore({ site: siteSettings, products: menu, customers });
 
   res.json({
     message: 'Menu item updated successfully.',
@@ -544,7 +876,7 @@ app.patch('/api/admin/menu/:id/stock', authenticate, adminOnly, (req, res) => {
   }
 
   item.available = item.available === false;
-  persistStore({ site: siteSettings, products: menu, orders });
+  persistStore({ site: siteSettings, products: menu, customers });
 
   res.json({
     message: item.available ? 'Product marked available.' : 'Product marked out of stock.',
@@ -560,7 +892,7 @@ app.patch('/api/admin/menu/:id/featured', authenticate, adminOnly, (req, res) =>
   }
 
   item.featured = !item.featured;
-  persistStore({ site: siteSettings, products: menu, orders });
+  persistStore({ site: siteSettings, products: menu, customers });
 
   res.json({
     message: item.featured ? 'Product featured successfully.' : 'Product removed from featured list.',
@@ -578,7 +910,7 @@ app.delete('/api/admin/menu/:id', authenticate, adminOnly, (req, res) => {
 
   const [deletedItem] = menu.splice(index, 1);
   menuById.delete(id);
-  persistStore({ site: siteSettings, products: menu, orders });
+  persistStore({ site: siteSettings, products: menu, customers });
 
   res.json({
     message: 'Menu item deleted successfully.',
@@ -594,7 +926,8 @@ app.get('/api/admin/users', authenticate, adminOnly, (req, res) => {
       email: user.email,
       role: user.role,
       createdAt: user.createdAt
-    }))
+    })),
+    customers: customers.map((customer) => sanitizeCustomer(customer))
   });
 });
 
@@ -603,8 +936,11 @@ app.get('*', (req, res) => {
     return res.sendFile(path.join(__dirname, 'admin.html'));
   }
 
-  const resolvedPath = req.path === '/' ? 'redirect.html' : 'index.html';
-  res.sendFile(path.join(__dirname, resolvedPath));
+  if (req.path === '/' || req.path === '/index.html' || req.path === '/thankyou.html' || req.path === '/customer-account.html') {
+    return res.redirect(`/login.html?returnTo=${encodeURIComponent(req.path)}`);
+  }
+
+  return res.status(404).send('Page not found.');
 });
 
 if (require.main === module) {

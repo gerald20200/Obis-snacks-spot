@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "test": "node auth-test.js"
   },
   "keywords": [
     "food",
@@ -19,7 +20,10 @@
   "license": "MIT",
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.7",
     "express": "^4.19.2",
-    "jsonwebtoken": "^9.0.2"
+    "google-auth-library": "^9.15.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.17.0"
   }
 }

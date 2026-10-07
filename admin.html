@@ -207,7 +207,7 @@
             </div>
             <div class="setting-item">
               <span>Storage</span>
-              <strong>JSON file-backed persistence</strong>
+              <strong>MongoDB-backed persistence</strong>
             </div>
             <div class="setting-item">
               <span>Session security</span>
@@ -217,6 +217,20 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <div id="orderDetailsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="orderDetailsTitle">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Order details</p>
+          <h2 id="orderDetailsTitle">Customer order</h2>
+        </div>
+        <button id="orderDetailsClose" class="modal-close" type="button" aria-label="Close order details">×</button>
+      </div>
+      <div id="orderDetailsContent" class="modal-content"></div>
+    </div>
   </div>
 
   <script src="admin.js"></script>

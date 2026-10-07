@@ -16,9 +16,18 @@ const productsGrid = document.getElementById('productsGrid');
 const ordersTableWrap = document.getElementById('ordersTableWrap');
 const dashboardOrdersList = document.getElementById('dashboardOrdersList');
 const dashboardSummary = document.getElementById('dashboardSummary');
+const orderDetailsModal = document.getElementById('orderDetailsModal');
+const orderDetailsContent = document.getElementById('orderDetailsContent');
+const orderDetailsClose = document.getElementById('orderDetailsClose');
 
 const tokenKey = 'obi_snack_admin_token';
 const formatMoney = (value) => `₦${Number(value || 0).toLocaleString('en-NG')}`;
+const escapeHtml = (value) => String(value ?? '')
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll("'", '&#039;');
 
 const getToken = () => localStorage.getItem(tokenKey) || '';
 
@@ -60,6 +69,39 @@ const showSection = (sectionName) => {
   adminPageTitle.textContent = titles[sectionName] || 'Dashboard';
 };
 
+const openOrderDetails = (order) => {
+  const items = (order.items || []).map((item) => `
+    <li>
+      <span>${escapeHtml(item.name)}</span>
+      <span>${item.quantity} × ${formatMoney(item.price)}</span>
+    </li>
+  `).join('');
+
+  orderDetailsContent.innerHTML = `
+    <div class="details-grid">
+      <div><span>Order ID</span><strong>${escapeHtml(order.orderId || order._id)}</strong></div>
+      <div><span>Status</span><strong class="badge">${escapeHtml(order.status || 'pending')}</strong></div>
+      <div><span>Customer</span><strong>${escapeHtml(order.customerName || 'Walk-in customer')}</strong></div>
+      <div><span>Phone</span><strong>${escapeHtml(order.phone || 'Not provided')}</strong></div>
+      <div><span>Email</span><strong>${escapeHtml(order.email || 'Not provided')}</strong></div>
+      <div><span>Order date</span><strong>${new Date(order.createdAt).toLocaleString()}</strong></div>
+      <div class="details-full"><span>Delivery address</span><strong>${escapeHtml(order.address || 'Not applicable')}</strong></div>
+      <div class="details-full"><span>Items</span><ul>${items}</ul></div>
+      ${order.notes ? `<div class="details-full"><span>Customer notes</span><strong>${escapeHtml(order.notes)}</strong></div>` : ''}
+      <div class="details-full details-total"><span>Total</span><strong>${formatMoney(order.total || 0)}</strong></div>
+    </div>
+  `;
+
+  orderDetailsModal.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+  orderDetailsClose.focus();
+};
+
+const closeOrderDetails = () => {
+  orderDetailsModal.classList.add('hidden');
+  document.body.classList.remove('modal-open');
+};
+
 const renderDashboardCards = (data) => {
   document.getElementById('statTotalOrders').textContent = String(data.totalOrders || 0);
   document.getElementById('statRevenue').textContent = formatMoney(data.totalRevenue || 0);
@@ -71,18 +113,19 @@ const renderDashboardCards = (data) => {
     ? recentOrders.map((order) => `
         <div class="order-row">
           <div class="order-main">
-            <strong>${order.customerName || 'Walk-in customer'}</strong>
-            <span class="badge">${order.status || 'pending'}</span>
+            <strong>${escapeHtml(order.orderId || 'Unknown order')}</strong>
+            <span class="badge">${escapeHtml(order.status || 'pending')}</span>
           </div>
-          <small>${(order.items || []).map((item) => `${item.name}${item.quantity > 1 ? ` x${item.quantity}` : ''}`).join(', ') || 'No items'}</small>
+          <small>${escapeHtml((order.items || []).map((item) => `${item.name}${item.quantity > 1 ? ` x${item.quantity}` : ''}`).join(', ') || 'No items')}</small>
           <div>${formatMoney(order.total || 0)}</div>
         </div>
       `).join('')
     : '<p>No recent orders yet.</p>';
 
   dashboardSummary.innerHTML = `
+    <div class="summary-item"><span>Confirmed</span><strong>${data.statuses?.confirmed || 0}</strong></div>
+    <div class="summary-item"><span>Preparing</span><strong>${data.statuses?.preparing || 0}</strong></div>
     <div class="summary-item"><span>Completed</span><strong>${data.statuses?.completed || 0}</strong></div>
-    <div class="summary-item"><span>Processing</span><strong>${data.statuses?.processing || 0}</strong></div>
     <div class="summary-item"><span>Cancelled</span><strong>${data.statuses?.cancelled || 0}</strong></div>
   `;
 };
@@ -97,33 +140,36 @@ const renderOrders = (orders) => {
     <table class="admin-table">
       <thead>
         <tr>
+          <th>Order ID</th>
           <th>Customer</th>
-          <th>Phone</th>
-          <th>Address</th>
-          <th>Items</th>
+          <th>Phone / Email</th>
+          <th>Delivery address</th>
+          <th>Products / Quantity</th>
           <th>Total</th>
+          <th>Date / Time</th>
           <th>Status</th>
-          <th>Order Date</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody>
-        ${orders.slice().reverse().map((order) => `
+        ${orders.map((order) => `
           <tr>
-            <td>${order.customerName || 'Walk-in customer'}</td>
-            <td>${order.phone || 'Not provided'}</td>
-            <td>${order.address || 'Not provided'}</td>
-            <td>${(order.items || []).map((item) => `${item.name}${item.quantity > 1 ? ` x${item.quantity}` : ''}`).join('<br>')}</td>
+            <td><code>${escapeHtml(order.orderId || order._id)}</code></td>
+            <td><strong>${escapeHtml(order.customerName || 'Walk-in customer')}</strong></td>
+            <td>${escapeHtml(order.phone || 'Not provided')}<br><small>${escapeHtml(order.email || 'No email')}</small></td>
+            <td>${escapeHtml(order.address || 'Not applicable')}</td>
+            <td>${(order.items || []).map((item) => `${escapeHtml(item.name)} × ${item.quantity}`).join('<br>')}</td>
             <td>${formatMoney(order.total || 0)}</td>
-            <td>
-              <select class="status-select" data-order-id="${order.id}">
-                ${['pending', 'processing', 'completed', 'cancelled'].map((status) => `<option value="${status}" ${order.status === status ? 'selected' : ''}>${status}</option>`).join('')}
-              </select>
-            </td>
             <td>${new Date(order.createdAt).toLocaleString()}</td>
             <td>
-              <button type="button" class="action-btn update" data-action="update-status" data-order-id="${order.id}">Save</button>
-              <button type="button" class="action-btn delete" data-action="delete-order" data-order-id="${order.id}">Delete</button>
+              <select class="status-select" data-order-id="${escapeHtml(order.orderId || order._id)}">
+                ${['pending', 'confirmed', 'preparing', 'completed', 'cancelled'].map((status) => `<option value="${status}" ${order.status === status ? 'selected' : ''}>${status}</option>`).join('')}
+              </select>
+            </td>
+            <td>
+              <button type="button" class="action-btn view" data-action="view-details" data-order-id="${escapeHtml(order.orderId || order._id)}">View details</button>
+              <button type="button" class="action-btn update" data-action="update-status" data-order-id="${escapeHtml(order.orderId || order._id)}">Save</button>
+              <button type="button" class="action-btn delete" data-action="delete-order" data-order-id="${escapeHtml(order.orderId || order._id)}">Delete</button>
             </td>
           </tr>
         `).join('')}
@@ -242,6 +288,17 @@ document.addEventListener('click', async (event) => {
   const orderId = target.dataset.orderId;
   const productId = target.dataset.productId;
 
+  if (action === 'view-details' && orderId) {
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, { headers: getHeaders() });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Unable to load order details.');
+      openOrderDetails(result.order);
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
   if (action === 'update-status' && orderId) {
     const select = document.querySelector(`.status-select[data-order-id="${orderId}"]`);
     const nextStatus = select ? select.value : 'pending';
@@ -319,6 +376,17 @@ document.addEventListener('click', async (event) => {
     } catch (error) {
       alert(error.message);
     }
+  }
+});
+
+orderDetailsClose.addEventListener('click', closeOrderDetails);
+orderDetailsModal.addEventListener('click', (event) => {
+  if (event.target.matches('[data-close-modal]')) closeOrderDetails();
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !orderDetailsModal.classList.contains('hidden')) {
+    closeOrderDetails();
   }
 });
 
