@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 const { OAuth2Client } = require('google-auth-library');
 const path = require('path');
 const crypto = require('node:crypto');
+const Order = require('./models/Order');
 const ordersRouter = require('./routes/orders');
 
 const app = express();
@@ -461,7 +462,7 @@ app.get('/api/auth/status', (req, res) => {
   }
 });
 
-app.use('/api', requireDatabase, optionalAuthenticate, ordersRouter);
+app.use('/api/orders', requireDatabase, optionalAuthenticate, ordersRouter);
 
 app.post('/api/auth/pin', (req, res) => {
   const { pin } = req.body || {};
