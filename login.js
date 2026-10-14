@@ -1,48 +1,57 @@
-const SUPABASE_URL = 'https://osbreefsoitfgsyjhppf.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_mP6Hia2ExVYw_Gg9yot_Vg_WKva_f-M';
+(() => {
+  const form = document.querySelector('.login-form');
+  const identifierInput = document.getElementById('username');
+  const passwordInput = document.getElementById('password');
+  const status = document.getElementById('loginStatus');
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (!form || !identifierInput || !passwordInput) return;
 
-const form = document.querySelector('form');
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    status.textContent = '';
+    status.className = 'login-status';
 
-if (form) {
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+    const identifier = identifierInput.value.trim();
+    const password = passwordInput.value;
 
-    const fullName = document.getElementById('name')?.value || '';
-    const email = document.getElementById('email')?.value || '';
-    const phone = document.getElementById('phone')?.value || '';
-    const password = document.getElementById('password')?.value || '';
-
-    // 1. Create secure login with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: email,
-      password: password,
-    });
-
-    if (authError) {
-      alert('Sign up error: ' + authError.message);
+    if (!identifier || !password) {
+      status.textContent = 'Enter your email or username and password.';
+      status.classList.add('visible', 'error');
       return;
     }
 
-    // 2. Save their profile details into your 'customers' table
-    const userId = authData.user?.id;
-    const { error: dbError } = await supabase
-      .from('customers')
-      .insert([
-        { 
-          id: userId,
-          full_name: fullName, 
-          email: email, 
-          phone: phone 
-        }
-      ]);
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    button.textContent = 'Signing in…';
 
-    if (dbError) {
-      alert('Error saving customer profile: ' + dbError.message);
-      return;
+    try {
+      const credentials = identifier.includes('@')
+        ? { email: identifier, password }
+        : { username: identifier, password };
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials)
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Sign in failed. Please try again.');
+      }
+
+      if (result.token) {
+        localStorage.setItem('obi_snack_auth_token', result.token);
+      }
+
+      status.textContent = 'Signed in successfully.';
+      status.classList.add('visible', 'success');
+    } catch (error) {
+      status.textContent = error.message;
+      status.classList.add('visible', 'error');
+    } finally {
+      button.disabled = false;
+      button.innerHTML = 'Sign in <span class="arrow" aria-hidden="true">→</span>';
     }
-
-    alert('Account created and registered successfully!');
   });
-}
+})();

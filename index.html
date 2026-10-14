@@ -84,6 +84,19 @@
         line-height: 1.6;
       }
 
+      .login-status {
+        display: none;
+        margin: -10px 0 18px;
+        padding: 11px 14px;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        line-height: 1.45;
+      }
+
+      .login-status.visible { display: block; }
+      .login-status.error { background: #fff0ee; color: #b42318; }
+      .login-status.success { background: #eaf8ef; color: #187a3d; }
+
       .login-form {
         display: flex;
         flex-direction: column;
@@ -261,6 +274,7 @@
 
         <h1 id="login-title">Welcome back</h1>
         <p class="subtitle">Enter your credentials to access your dashboard.</p>
+        <p id="loginStatus" class="login-status" role="status" aria-live="polite"></p>
 
         <form class="login-form" action="#" method="post">
           <div class="field">
@@ -315,5 +329,12 @@
         toggleButton.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
       });
     </script>
+<!-- 1. Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- 2. Your JavaScript file -->
+    <script src="login.js"></script>
   </body>
 </html>
+   </body>
+  </html>

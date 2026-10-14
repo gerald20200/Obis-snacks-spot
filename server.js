@@ -691,6 +691,7 @@ app.post('/api/auth/login', async (req, res) => {
   if (mayUseSupabase) {
     const supabaseAuth = await signInWithSupabase(loginEmail, password);
     if (supabaseAuth) {
+      setCookie(res, COOKIE_NAME, createSessionToken(supabaseAuth.user));
       return res.json({
         message: 'Login successful.',
         token: supabaseAuth.token,
@@ -711,6 +712,7 @@ app.post('/api/auth/login', async (req, res) => {
 
   if (customer && bcrypt.compareSync(password, customer.passwordHash)) {
     const token = generateToken(customer);
+    setCookie(res, COOKIE_NAME, createSessionToken(customer));
     return res.json({
       message: 'Login successful.',
       token,
@@ -733,6 +735,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 
   const token = generateToken(user);
+  setCookie(res, COOKIE_NAME, createSessionToken(user));
 
   res.json({
     message: 'Login successful.',
