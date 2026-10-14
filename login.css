@@ -21,6 +21,67 @@ body {
   background: #fffaf4;
 }
 
+body.signup-page {
+  --brand: #e53935;
+  --brand-dark: #c62828;
+  --brand-soft: #fff0df;
+  --ink: #1f1f1f;
+  --muted: #665b50;
+  --line: #eadfc9;
+  background: linear-gradient(135deg, #fff8e1 0%, #fffdf7 48%, #ffedbd 100%);
+}
+
+body.signup-page .auth-shell {
+  background: transparent;
+}
+
+body.signup-page .brand-mark {
+  border-radius: 15px;
+  border-bottom: 3px solid #ffc107;
+  box-shadow: 0 12px 25px rgba(229, 57, 53, 0.2);
+}
+
+body.signup-page .email-auth-form {
+  gap: 10px;
+}
+
+body.signup-page .email-auth-form input {
+  height: 54px;
+  border-radius: 10px;
+  background: #fffdf8;
+}
+
+body.signup-page .email-auth-form input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 4px rgba(229, 57, 53, 0.1);
+  background: #fff;
+}
+
+body.signup-page .primary-button {
+  min-height: 54px;
+  box-shadow: 0 10px 22px rgba(229, 57, 53, 0.2);
+}
+
+body.signup-page .account-link {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+body.signup-page .account-link a {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+body.signup-page .account-link a:hover {
+  background: #ffc107;
+  color: var(--ink);
+  text-decoration: none;
+}
+
 button, input { font: inherit; }
 
 button { cursor: pointer; }
