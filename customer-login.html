@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Customer login to Obi's Snack Spot">
+  <title>Customer Login | Obi's Snack Spot</title>
+  <link rel="stylesheet" href="/login.css">
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="auth-card" aria-labelledby="auth-title">
+      <div class="brand-mark" aria-hidden="true">OS</div>
+      <p class="eyebrow">Customer sign in</p>
+      <h1 id="auth-title">Welcome back</h1>
+      <p class="intro">Sign in with your email and password to continue.</p>
+
+      <div id="authStatus" class="status-message" role="status" aria-live="polite"></div>
+
+      <form id="emailLoginForm" class="email-auth-form" novalidate>
+        <label for="loginEmail">Email</label>
+        <input id="loginEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required>
+
+        <button class="primary-button" type="submit">Sign in <span aria-hidden="true">→</span></button>
+      </form>
+
+      <p class="account-link">
+        New here?
+        <a href="/customer-signup.html">Create an account</a>
+      </p>
+
+      <p class="security-note"><span aria-hidden="true">✓</span> Secure access protected with HTTPS-ready session cookies.</p>
+    </section>
+
+    <aside class="auth-visual" aria-label="Obi's Snack Spot introduction">
+      <div class="visual-overlay"></div>
+      <div class="visual-content">
+        <span class="visual-badge">Fresh. Fast. Delicious.</span>
+        <h2>Place your next order in minutes.</h2>
+        <p>Track your favorites and keep your account ready for your next snack run.</p>
+      </div>
+    </aside>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase-config.js" defer></script>
+  <script src="/auth.js" defer></script>
+</body>
+</html>

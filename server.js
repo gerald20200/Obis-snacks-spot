@@ -5,6 +5,7 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const { createClient } = require('@supabase/supabase-js');
 const { OAuth2Client } = require('google-auth-library');
 const path = require('path');
 const crypto = require('node:crypto');
@@ -17,10 +18,20 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 const JWT_SECRET = process.env.JWT_SECRET;
 const AUTH_PIN = process.env.AUTH_PIN;
 const MONGODB_URI = process.env.MONGODB_URI;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@obisnackspot.com';
 const COOKIE_SECURE = process.env.COOKIE_SECURE === 'true';
+const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      }
+    })
+  : null;
 const COOKIE_NAME = 'obi_snack_session';
 const PENDING_COOKIE_NAME = 'obi_snack_pending';
 const SESSION_TTL_SECONDS = 8 * 60 * 60;
@@ -33,16 +44,11 @@ const COOKIE_PROPERTIES = {
   maxAge: SESSION_TTL_SECONDS * 1000
 };
 
+const productionAuthConfigMissing = NODE_ENV === 'production' && (!JWT_SECRET || !AUTH_PIN);
+const productionDatabaseConfigMissing = NODE_ENV === 'production' && !MONGODB_URI;
+
 if (!JWT_SECRET || !AUTH_PIN) {
-  if (NODE_ENV === 'production') {
-    throw new Error('JWT_SECRET and AUTH_PIN must be configured in production.');
-  }
-
-  console.warn('JWT_SECRET and AUTH_PIN are not configured. A temporary development session will be used, but production startup requires both values.');
-}
-
-if (NODE_ENV === 'production' && !MONGODB_URI) {
-  throw new Error('MONGODB_URI must be configured in production.');
+  console.warn('JWT_SECRET and AUTH_PIN are not configured. Authentication will be unavailable until they are supplied.');
 }
 
 const effectiveJwtSecret = JWT_SECRET || crypto.randomBytes(48).toString('hex');
@@ -51,9 +57,16 @@ const googleClient = process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_S
   ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_CALLBACK_URL)
   : null;
 const STORE_PATH = path.join(__dirname, 'data', 'store.json');
-const databaseConnection = MONGODB_URI
-  ? mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
-  : null;
+let databaseConnection = null;
+let databaseError = null;
+
+if (MONGODB_URI) {
+  databaseConnection = mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
+    .catch((error) => {
+      databaseError = error;
+      return null;
+    });
+}
 
 app.disable('x-powered-by');
 
@@ -263,11 +276,43 @@ const createPendingToken = (identity) => jwt.sign({
   issuedAt: Math.floor(Date.now() / 1000)
 }, effectiveJwtSecret, { expiresIn: PENDING_TTL_SECONDS });
 
+const signInWithSupabase = async (email, password) => {
+  if (!supabase || !email || !password) {
+    return null;
+  }
+
+  try {
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password
+    });
+
+    if (error || !data?.session || !data?.user) {
+      return null;
+    }
+
+    return {
+      token: data.session.access_token,
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+        role: data.user.user_metadata?.role || 'customer',
+        fullName: data.user.user_metadata?.full_name || data.user.user_metadata?.name || data.user.email,
+        phone: data.user.user_metadata?.phone || ''
+      }
+    };
+  } catch (error) {
+    console.warn('Supabase login failed:', error.message);
+    return null;
+  }
+};
+
 const validReturnTo = (value) => typeof value === 'string' && ['/index.html', '/thankyou.html'].includes(value)
   ? value
   : '/index.html';
 
-const authenticate = (req, res, next) => {
+const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -279,13 +324,30 @@ const authenticate = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, effectiveJwtSecret);
     req.user = decoded;
-    next();
+    return next();
   } catch (error) {
+    if (supabase) {
+      try {
+        const { data, error: userError } = await supabase.auth.getUser(token);
+        if (!userError && data?.user) {
+          req.user = {
+            id: data.user.id,
+            email: data.user.email,
+            role: data.user.user_metadata?.role || 'customer',
+            fullName: data.user.user_metadata?.full_name || data.user.user_metadata?.name || data.user.email
+          };
+          return next();
+        }
+      } catch (supabaseError) {
+        console.warn('Supabase auth verification failed:', supabaseError.message);
+      }
+    }
+
     return res.status(401).json({ message: 'Invalid or expired token.' });
   }
 };
 
-const optionalAuthenticate = (req, res, next) => {
+const optionalAuthenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) return next();
 
@@ -293,13 +355,34 @@ const optionalAuthenticate = (req, res, next) => {
     req.user = jwt.verify(authHeader.split(' ')[1], effectiveJwtSecret);
     return next();
   } catch (error) {
+    if (supabase) {
+      try {
+        const { data, error: userError } = await supabase.auth.getUser(authHeader.split(' ')[1]);
+        if (!userError && data?.user) {
+          req.user = {
+            id: data.user.id,
+            email: data.user.email,
+            role: data.user.user_metadata?.role || 'customer',
+            fullName: data.user.user_metadata?.full_name || data.user.user_metadata?.name || data.user.email
+          };
+          return next();
+        }
+      } catch (supabaseError) {
+        console.warn('Supabase optional auth verification failed:', supabaseError.message);
+      }
+    }
+
     return res.status(401).json({ message: 'Invalid or expired token.' });
   }
 };
 
 const requireDatabase = async (req, res, next) => {
-  if (!databaseConnection) {
+  if (productionDatabaseConfigMissing || !MONGODB_URI) {
     return res.status(503).json({ message: 'Order storage is not configured. Add MONGODB_URI.' });
+  }
+
+  if (databaseError) {
+    return res.status(503).json({ message: 'Order storage is temporarily unavailable. Please try again.' });
   }
 
   try {
@@ -418,16 +501,19 @@ app.get('/index.html', requirePageAuthentication, (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+const ADMIN_HTML_PATH = path.join(__dirname, 'src', 'admin', 'admin.html');
+const ADMIN_JS_PATH = path.join(__dirname, 'src', 'admin', 'admin.js');
+
 app.get('/admin.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin.html'));
+  res.sendFile(ADMIN_HTML_PATH);
 });
 
 app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin.html'));
+  res.sendFile(ADMIN_HTML_PATH);
 });
 
 app.get('/admin/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin.html'));
+  res.sendFile(ADMIN_HTML_PATH);
 });
 
 app.get('/admin.css', (req, res) => {
@@ -437,7 +523,7 @@ app.get('/admin.css', (req, res) => {
 
 app.get('/admin.js', (req, res) => {
   res.type('application/javascript');
-  res.sendFile(path.join(__dirname, 'admin.js'));
+  res.sendFile(ADMIN_JS_PATH);
 });
 
 app.get('/', requirePageAuthentication, (req, res) => {
@@ -460,6 +546,13 @@ app.get('/api/auth/status', (req, res) => {
     clearCookie(res, COOKIE_NAME);
     return res.json({ authenticated: false });
   }
+});
+
+app.use('/api/auth', (req, res, next) => {
+  if (productionAuthConfigMissing) {
+    return res.status(503).json({ message: 'Authentication is not configured. Add JWT_SECRET and AUTH_PIN.' });
+  }
+  return next();
 });
 
 app.use('/api/orders', requireDatabase, optionalAuthenticate, ordersRouter);
@@ -585,11 +678,31 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ message: 'Logged out successfully.' });
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const { username, email, password } = req.body || {};
 
   if (!password || (!username && !email)) {
     return res.status(400).json({ message: 'Email or username and password are required.' });
+  }
+
+  const loginEmail = String(email || '').trim();
+  const mayUseSupabase = Boolean(supabase && loginEmail && /@/.test(loginEmail));
+
+  if (mayUseSupabase) {
+    const supabaseAuth = await signInWithSupabase(loginEmail, password);
+    if (supabaseAuth) {
+      return res.json({
+        message: 'Login successful.',
+        token: supabaseAuth.token,
+        user: {
+          id: supabaseAuth.user.id,
+          email: supabaseAuth.user.email,
+          fullName: supabaseAuth.user.fullName,
+          phone: supabaseAuth.user.phone,
+          role: supabaseAuth.user.role
+        }
+      });
+    }
   }
 
   const customer = email
@@ -633,7 +746,7 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
   const { fullName, email, phone, password, confirmPassword } = req.body || {};
 
   if (!fullName || !email || !phone || !password || !confirmPassword) {
@@ -658,6 +771,41 @@ app.post('/api/auth/register', (req, res) => {
 
   if (existingCustomer) {
     return res.status(409).json({ message: 'This email is already registered.' });
+  }
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password: String(password),
+        options: {
+          data: {
+            full_name: String(fullName).trim(),
+            phone: String(phone).trim(),
+            role: 'customer'
+          }
+        }
+      });
+
+      if (!error && data?.user) {
+        const token = data.session?.access_token || null;
+        return res.status(201).json({
+          message: 'Account created successfully.',
+          token,
+          user: {
+            id: data.user.id,
+            email: data.user.email,
+            fullName: data.user.user_metadata?.full_name || String(fullName).trim(),
+            phone: data.user.user_metadata?.phone || String(phone).trim(),
+            role: data.user.user_metadata?.role || 'customer'
+          }
+        });
+      }
+
+      console.warn('Supabase sign-up failed, falling back to local account creation:', error?.message || 'Unknown Supabase error');
+    } catch (error) {
+      console.warn('Supabase sign-up error, falling back to local account creation:', error.message);
+    }
   }
 
   const newCustomer = {
@@ -934,7 +1082,7 @@ app.get('/api/admin/users', authenticate, adminOnly, (req, res) => {
 
 app.get('*', (req, res) => {
   if (req.path === '/admin' || req.path === '/admin/' || req.path === '/admin.html') {
-    return res.sendFile(path.join(__dirname, 'admin.html'));
+    return res.sendFile(ADMIN_HTML_PATH);
   }
 
   if (req.path === '/' || req.path === '/index.html' || req.path === '/thankyou.html' || req.path === '/customer-account.html') {

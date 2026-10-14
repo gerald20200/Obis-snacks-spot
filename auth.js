@@ -3,6 +3,8 @@
   const pinInput = document.getElementById('accessPin');
   const togglePin = document.getElementById('togglePin');
   const googleButton = document.getElementById('googleButton');
+  const emailLoginForm = document.getElementById('emailLoginForm');
+  const signupForm = document.getElementById('signupForm');
   const authStatus = document.getElementById('authStatus');
   const logoutButton = document.getElementById('logoutButton');
   const logoutButtonLabel = document.getElementById('logoutButtonLabel');
@@ -27,6 +29,8 @@
     if (label) button.textContent = isBusy ? label : button.dataset.originalLabel;
   };
 
+  const getSupabase = () => window.supabaseClient || null;
+
   const api = async (url, options = {}) => {
     const response = await fetch(url, {
       credentials: 'include',
@@ -47,7 +51,136 @@
     window.location.assign(safePath);
   };
 
+  const persistAuthToken = (token) => {
+    if (token) {
+      localStorage.setItem('obi_snack_auth_token', token);
+    }
+  };
+
+  const handleAuthSuccess = (token, returnTo) => {
+    persistAuthToken(token);
+    window.setTimeout(() => redirectAfterAuth(returnTo || '/index.html'), 300);
+  };
+
   const requestedReturnTo = new URLSearchParams(window.location.search).get('returnTo');
+
+  const submitEmailLogin = async (event) => {
+    event.preventDefault();
+    clearStatus();
+
+    const emailInput = document.getElementById('loginEmail');
+    const passwordInput = document.getElementById('loginPassword');
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+
+    if (!email || !password) {
+      setStatus('Email and password are required.');
+      return;
+    }
+
+    const supabase = getSupabase();
+    if (supabase) {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (!error && data?.session) {
+        setStatus('Login successful. Redirecting…', 'success');
+        handleAuthSuccess(data.session.access_token, requestedReturnTo || '/index.html');
+        return;
+      }
+
+      if (error) {
+        setStatus(error.message);
+        passwordInput.value = '';
+        emailInput.focus();
+        return;
+      }
+    }
+
+    try {
+      const data = await api('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password, returnTo: requestedReturnTo })
+      });
+
+      if (!data.token) {
+        throw new Error('No authentication token was returned.');
+      }
+
+      setStatus('Login successful. Redirecting…', 'success');
+      handleAuthSuccess(data.token, requestedReturnTo || '/index.html');
+    } catch (error) {
+      setStatus(error.message);
+      passwordInput.value = '';
+      emailInput.focus();
+    }
+  };
+
+  const submitSignup = async (event) => {
+    event.preventDefault();
+    clearStatus();
+
+    const fullName = document.getElementById('signupFullName').value.trim();
+    const email = document.getElementById('signupEmail').value.trim();
+    const phone = document.getElementById('signupPhone').value.trim();
+    const password = document.getElementById('signupPassword').value;
+    const confirmPassword = document.getElementById('signupConfirmPassword').value;
+
+    if (!fullName || !email || !phone || !password || !confirmPassword) {
+      setStatus('Please complete every signup field.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setStatus('Password must be at least 6 characters long.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setStatus('Passwords do not match.');
+      return;
+    }
+
+    const supabase = getSupabase();
+    if (supabase) {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            phone,
+            role: 'customer'
+          }
+        }
+      });
+
+      if (!error && data?.user) {
+        setStatus('Account created successfully. Redirecting…', 'success');
+        handleAuthSuccess(data.session?.access_token || '', requestedReturnTo || '/index.html');
+        return;
+      }
+
+      if (error) {
+        setStatus(error.message);
+        return;
+      }
+    }
+
+    try {
+      const data = await api('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ fullName, email, phone, password, confirmPassword, returnTo: requestedReturnTo })
+      });
+
+      if (!data.token) {
+        throw new Error('Account created, but no access token was returned.');
+      }
+
+      setStatus('Account created successfully. Redirecting…', 'success');
+      handleAuthSuccess(data.token, requestedReturnTo || '/index.html');
+    } catch (error) {
+      setStatus(error.message);
+    }
+  };
 
   const submitPin = async (event) => {
     event.preventDefault();
@@ -80,6 +213,30 @@
   const startGoogle = async () => {
     clearStatus();
     setBusy(googleButton, true, 'Opening Google…');
+
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const redirectTo = `${window.location.origin}/index.html`;
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo }
+        });
+
+        if (!error) {
+          return;
+        }
+
+        setStatus(error.message);
+        setBusy(googleButton, false);
+        return;
+      } catch (error) {
+        setStatus(error.message);
+        setBusy(googleButton, false);
+        return;
+      }
+    }
+
     try {
       const data = await api('/api/auth/google/start', {
         method: 'POST',
@@ -93,10 +250,16 @@
   };
 
   const logout = async () => {
+    const supabase = getSupabase();
+
     try {
-      await api('/api/auth/logout', { method: 'POST' });
+      if (supabase) {
+        await supabase.auth.signOut();
+      } else {
+        await api('/api/auth/logout', { method: 'POST' });
+      }
     } catch (error) {
-      // The cookie is cleared by the server even if the request fails.
+      // Ignore logout errors and continue redirect.
     }
 
     window.location.assign('/login.html');
@@ -104,6 +267,8 @@
 
   if (pinForm) pinForm.addEventListener('submit', submitPin);
   if (googleButton) googleButton.addEventListener('click', startGoogle);
+  if (emailLoginForm) emailLoginForm.addEventListener('submit', submitEmailLogin);
+  if (signupForm) signupForm.addEventListener('submit', submitSignup);
   if (togglePin) {
     togglePin.addEventListener('click', () => {
       const isPassword = pinInput.type === 'password';

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Create a customer account for Obi's Snack Spot">
+  <title>Create Account | Obi's Snack Spot</title>
+  <link rel="stylesheet" href="/login.css">
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="auth-card" aria-labelledby="auth-title">
+      <div class="brand-mark" aria-hidden="true">OS</div>
+      <p class="eyebrow">Create account</p>
+      <h1 id="auth-title">Join Obi's Snack Spot</h1>
+      <p class="intro">Create your customer account to place orders and save your details.</p>
+
+      <div id="authStatus" class="status-message" role="status" aria-live="polite"></div>
+
+      <form id="signupForm" class="email-auth-form" novalidate>
+        <label for="signupFullName">Full name</label>
+        <input id="signupFullName" name="fullName" type="text" autocomplete="name" placeholder="Your full name" required>
+
+        <label for="signupEmail">Email</label>
+        <input id="signupEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+
+        <label for="signupPhone">Phone number</label>
+        <input id="signupPhone" name="phone" type="tel" autocomplete="tel" placeholder="08012345678" required>
+
+        <label for="signupPassword">Password</label>
+        <input id="signupPassword" name="password" type="password" autocomplete="new-password" placeholder="Create a password" required>
+
+        <label for="signupConfirmPassword">Confirm password</label>
+        <input id="signupConfirmPassword" name="confirmPassword" type="password" autocomplete="new-password" placeholder="Repeat your password" required>
+
+        <button class="primary-button" type="submit">Create account <span aria-hidden="true">→</span></button>
+      </form>
+
+      <p class="account-link">
+        Already have an account?
+        <a href="/customer-login.html">Sign in</a>
+      </p>
+    </section>
+
+    <aside class="auth-visual" aria-label="Obi's Snack Spot introduction">
+      <div class="visual-overlay"></div>
+      <div class="visual-content">
+        <span class="visual-badge">Fresh. Fast. Delicious.</span>
+        <h2>Enjoy your favorite meals anytime.</h2>
+        <p>Your account keeps things easy for your next order and customer service needs.</p>
+      </div>
+    </aside>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase-config.js" defer></script>
+  <script src="/auth.js" defer></script>
+</body>
+</html>

@@ -734,6 +734,48 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       try {
+        const orderTotal = orderItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0);
+        const itemSummary = orderItems.map((item) => `${item.name}${item.quantity > 1 ? ` x${item.quantity}` : ''}`).join(', ');
+        const customRequestSummary = customItems.length ? customItems.map((item) => item.name).join(', ') : 'None';
+
+        const supabase = window.supabaseClient || null;
+        if (supabase) {
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          if (userError || !user) {
+            window.location.href = '/customer-login.html?returnTo=/index.html';
+            return;
+          }
+
+          const { error } = await supabase.from('orders').insert([{
+            user_id: user.id,
+            customer_name: customerName,
+            email: user.email || '',
+            phone,
+            address,
+            notes: notes ? `${notes} | Custom requests: ${customRequestSummary}` : `Custom requests: ${customRequestSummary}`,
+            status: 'pending',
+            total_price: orderTotal,
+            items: orderItems
+          }]);
+
+          if (error) {
+            throw new Error(error.message || 'Unable to save order to Supabase.');
+          }
+
+          sessionStorage.setItem('obiOrderSuccess', JSON.stringify({
+            message: 'Order placed successfully.',
+            customerName,
+            itemSummary,
+            orderTotal,
+            phone,
+            address,
+            notes: notes ? `${notes} | Custom requests: ${customRequestSummary}` : `Custom requests: ${customRequestSummary}`
+          }));
+
+          window.location.href = 'thankyou.html';
+          return;
+        }
+
         const response = await fetch('/api/orders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -751,10 +793,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!response.ok) {
           throw new Error(result.message || 'Order failed.');
         }
-
-        const itemSummary = orderItems.map((item) => `${item.name}${item.quantity > 1 ? ` x${item.quantity}` : ''}`).join(', ');
-        const orderTotal = orderItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0);
-        const customRequestSummary = customItems.length ? customItems.map((item) => item.name).join(', ') : 'None';
 
         sessionStorage.setItem('obiOrderSuccess', JSON.stringify({
           message: result.message,

@@ -29,6 +29,23 @@
         </form>
       </div>
 
+      <div class="divider"><span>or sign in with email</span></div>
+
+      <form id="emailLoginForm" class="email-auth-form" novalidate>
+        <label for="loginEmail">Email</label>
+        <input id="loginEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required>
+
+        <button class="primary-button" type="submit">Sign in with email <span aria-hidden="true">→</span></button>
+      </form>
+
+      <p class="account-link">
+        Need an account?
+        <a href="/customer-signup.html">Create one</a>
+      </p>
+
       <div class="divider"><span>or continue with</span></div>
 
       <button id="googleButton" class="google-button" type="button">
@@ -59,6 +76,8 @@
     </aside>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase-config.js" defer></script>
   <script src="/auth.js" defer></script>
 </body>
 </html>
