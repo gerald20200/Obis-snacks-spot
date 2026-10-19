@@ -112,5 +112,15 @@
       "available": true
     }
   ],
-  "orders": []
+  "customers": [
+    {
+      "id": 1792021770839,
+      "fullName": "Obimuyiwa Gerald",
+      "email": "obimuyiwagerald@gmail.com",
+      "phone": "07077266794",
+      "passwordHash": "$2a$10$SGCrtefxTy.C1RHFcjaJ.OQ8xBV3aWhORp1iKoe9ttgczN25b.wWO",
+      "role": "customer",
+      "createdAt": "2026-10-14T23:49:30.932Z"
+    }
+  ]
 }
