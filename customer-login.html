@@ -17,7 +17,7 @@
 
       <div id="authStatus" class="status-message" role="status" aria-live="polite"></div>
 
-      <form id="emailLoginForm" class="email-auth-form" novalidate>
+      <form id="emailLoginForm" class="email-auth-form" onsubmit="submitEmailLogin(event)" novalidate>
         <label for="loginEmail">Email</label>
         <input id="loginEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
 
