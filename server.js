@@ -13,6 +13,7 @@ const Order = require('./models/Order');
 const ordersRouter = require('./routes/orders');
 
 const app = express();
+app.use(express.static(__dirname));
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const JWT_SECRET = process.env.JWT_SECRET;
