@@ -17,14 +17,14 @@
 
       <div id="authStatus" class="status-message" role="status" aria-live="polite"></div>
 
-          <form id="emailLoginForm" class="email-auth-form" onsubmit="submitEmailLogin(event)" novalidate>
+      <form id="emailLoginForm" class="email-auth-form" onsubmit="submitEmailLogin(event)" novalidate>
         <label for="loginEmail">Email</label>
         <input id="loginEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
 
         <label for="loginPassword">Password</label>
         <input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required>
 
-        <button class="primary-button" type="submit">Sign in <span aria-hidden="true">→</span></button>
+        <button class="primary-button" type="button" onclick="submitEmailLogin(event)">Sign in <span aria-hidden="true">→</span></button>
       </form>
 
       <p class="account-link">
