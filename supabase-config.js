@@ -1,24 +1,11 @@
-(function () {
-  const config = window.SUPABASE_CONFIG || {
-    url: 'https://your-project-ref.supabase.co',
-    anonKey: 'your-anon-key'
-  };
+import { createClient } from '@supabase/supabase-js'
 
-  if (!config.url || !config.anonKey || config.url.includes('your-project-ref') || config.anonKey.includes('your-anon-key')) {
-    console.warn('Supabase is not configured yet. Replace the placeholders in window.SUPABASE_CONFIG or supabase-config.js.');
-    return;
-  }
+// Your Supabase Project Credentials
+const supabaseUrl = 'https://ouriduvcnenodechrgau.supabase.co'
+const supabaseAnonKey = 'sb_publishable_xFRY5RTHxaBzjtcuaw_y3Q_9NoDmTWd'
 
-  if (!window.supabase) {
-    console.warn('Supabase JavaScript client was not loaded. Make sure the CDN script is included before this file.');
-    return;
-  }
+// Initialize the Supabase client
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-  window.supabaseClient = window.supabase.createClient(config.url, config.anonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true
-    }
-  });
-})();
+// Optional: Test log to confirm initialization in the browser console
+console.log('Supabase client initialized successfully!')
