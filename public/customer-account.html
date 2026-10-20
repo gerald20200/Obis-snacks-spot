@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Customer account page for Obi's Snack Spot">
+  <title>Customer Account | Obi's Snack Spot</title>
+  <link rel="stylesheet" href="/css/login.css">
+  <link rel="stylesheet" href="/login.css">
+  <style>
+    .account-card {
+      max-width: 540px;
+      margin: 40px auto;
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      font-family: inherit;
+    }
+    .account-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      border-bottom: 1px solid #f0e6dc;
+      padding-bottom: 16px;
+    }
+    .profile-info {
+      margin-bottom: 24px;
+      line-height: 1.8;
+    }
+    .action-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .action-row a, .action-row button {
+      flex: 1;
+      text-align: center;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="account-card" aria-labelledby="account-title">
+      <div class="brand-mark" aria-hidden="true">OS</div>
+      <div class="account-header">
+        <div>
+          <p class="eyebrow">Customer Portal</p>
+          <h1 id="account-title">My Account</h1>
+        </div>
+      </div>
+
+      <div id="authStatus" class="status-message" role="status" aria-live="polite"></div>
+
+      <div class="profile-info">
+        <p><strong>Status:</strong> <span id="accountStatusText">Checking login status...</span></p>
+        <p id="userEmailRow" style="display:none;"><strong>Email:</strong> <span id="userEmail"></span></p>
+        <p id="userNameRow" style="display:none;"><strong>Name:</strong> <span id="userName"></span></p>
+      </div>
+
+      <div class="action-row">
+        <a href="/" class="primary-button" style="display:inline-block; line-height:2.4;">Go to Menu / Order</a>
+        <button id="logoutButton" class="primary-button" style="background:#555;" type="button">Sign Out</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase-config.js" defer></script>
+  <script src="/supabase-config.js" defer></script>
+  <script src="/js/auth.js" defer></script>
+  <script src="/auth.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const res = await fetch('/api/auth/status');
+        const data = await res.json();
+        if (data && data.authenticated && data.user) {
+          document.getElementById('accountStatusText').textContent = 'Signed in (' + (data.user.role || 'customer') + ')';
+          if (data.user.email) {
+            document.getElementById('userEmail').textContent = data.user.email;
+            document.getElementById('userEmailRow').style.display = 'block';
+          }
+          if (data.user.fullName) {
+            document.getElementById('userName').textContent = data.user.fullName;
+            document.getElementById('userNameRow').style.display = 'block';
+          }
+        } else {
+          document.getElementById('accountStatusText').textContent = 'Not signed in';
+          setTimeout(() => { window.location.href = '/customer-login.html'; }, 1500);
+        }
+      } catch (e) {
+        document.getElementById('accountStatusText').textContent = 'Error checking status';
+      }
+    });
+  </script>
+</body>
+</html>

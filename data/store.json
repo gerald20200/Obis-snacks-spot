@@ -121,6 +121,15 @@
       "passwordHash": "$2a$10$SGCrtefxTy.C1RHFcjaJ.OQ8xBV3aWhORp1iKoe9ttgczN25b.wWO",
       "role": "customer",
       "createdAt": "2026-10-14T23:49:30.932Z"
+    },
+    {
+      "id": 1792485412634,
+      "fullName": "damilare john",
+      "email": "mrdamilareofficial@gmail.com",
+      "phone": "07080513940",
+      "passwordHash": "$2a$10$tQM8gd0irFzPaB1tm/yq8O70rCnaNXqw7VoeECC9jr32og0AOB5Uy",
+      "role": "customer",
+      "createdAt": "2026-10-20T08:36:52.870Z"
     }
   ]
 }

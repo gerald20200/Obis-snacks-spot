@@ -9,11 +9,14 @@ const { createClient } = require('@supabase/supabase-js');
 const { OAuth2Client } = require('google-auth-library');
 const path = require('path');
 const crypto = require('node:crypto');
-const Order = require('./models/Order');
-const ordersRouter = require('./routes/orders');
+const Order = require('./src/models/Order');
+const ordersRouter = require('./src/routes/orders');
 
 const app = express();
-app.use(express.static(__dirname));
+const PUBLIC_DIR = path.join(__dirname, 'public');
+app.use(express.static(PUBLIC_DIR));
+app.use('/css', express.static(path.join(PUBLIC_DIR, 'css')));
+app.use('/js', express.static(path.join(PUBLIC_DIR, 'js')));
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -476,34 +479,60 @@ app.use((err, req, res, next) => {
 
 app.get('/style.css', (req, res) => {
   res.type('text/css');
-  res.sendFile(path.join(__dirname, 'style.css'));
+  res.sendFile(path.join(PUBLIC_DIR, 'css', 'style.css'));
 });
 
 app.get('/login.css', (req, res) => {
   res.type('text/css');
-  res.sendFile(path.join(__dirname, 'login.css'));
+  res.sendFile(path.join(PUBLIC_DIR, 'css', 'login.css'));
+});
+
+app.get('/admin.css', (req, res) => {
+  res.type('text/css');
+  res.sendFile(path.join(PUBLIC_DIR, 'css', 'admin.css'));
 });
 
 app.get('/auth.js', (req, res) => {
   res.type('application/javascript');
-  res.sendFile(path.join(__dirname, 'auth.js'));
+  res.sendFile(path.join(PUBLIC_DIR, 'js', 'auth.js'));
 });
 
 app.get('/script.js', (req, res) => {
   res.type('application/javascript');
-  res.sendFile(path.join(__dirname, 'script.js'));
+  res.sendFile(path.join(PUBLIC_DIR, 'js', 'script.js'));
+});
+
+app.get('/admin.js', (req, res) => {
+  res.type('application/javascript');
+  res.sendFile(path.join(PUBLIC_DIR, 'js', 'admin.js'));
+});
+
+app.get('/login.js', (req, res) => {
+  res.type('application/javascript');
+  res.sendFile(path.join(PUBLIC_DIR, 'js', 'login.js'));
+});
+
+app.get('/supabase-config.js', (req, res) => {
+  res.type('application/javascript');
+  res.sendFile(path.join(PUBLIC_DIR, 'js', 'supabase-config.js'));
+});
+
+app.get('/admin-dashboard.js', (req, res) => {
+  res.type('application/javascript');
+  res.sendFile(path.join(PUBLIC_DIR, 'js', 'admin-dashboard.js'));
+});
+
+app.get('/backend.js', (req, res) => {
+  res.type('application/javascript');
+  res.sendFile(path.join(PUBLIC_DIR, 'js', 'backend.js'));
 });
 
 app.get('/login.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'login.html'));
+  res.sendFile(path.join(PUBLIC_DIR, 'login.html'));
 });
 
-app.get('/index.html', requirePageAuthentication, (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-const ADMIN_HTML_PATH = path.join(__dirname, 'src', 'admin', 'admin.html');
-const ADMIN_JS_PATH = path.join(__dirname, 'src', 'admin', 'admin.js');
+const ADMIN_HTML_PATH = path.join(PUBLIC_DIR, 'admin.html');
+const ADMIN_JS_PATH = path.join(PUBLIC_DIR, 'js', 'admin.js');
 
 app.get('/admin.html', (req, res) => {
   res.sendFile(ADMIN_HTML_PATH);
@@ -517,18 +546,20 @@ app.get('/admin/', (req, res) => {
   res.sendFile(ADMIN_HTML_PATH);
 });
 
-app.get('/admin.css', (req, res) => {
-  res.type('text/css');
-  res.sendFile(path.join(__dirname, 'admin.css'));
+app.get('/backend.html', authenticate, adminOnly, (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'backend.html'));
 });
 
-app.get('/admin.js', (req, res) => {
-  res.type('application/javascript');
-  res.sendFile(ADMIN_JS_PATH);
+app.get('/admin-dashboard.html', (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'admin-dashboard.html'));
+});
+
+app.get('/index.html', requirePageAuthentication, (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
 app.get('/', requirePageAuthentication, (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
 app.get('/api/health', (req, res) => {
@@ -863,15 +894,11 @@ app.get('/api/auth/me', authenticate, (req, res) => {
 });
 
 app.get('/customer-login.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'customer-login.html'));
+  res.sendFile(path.join(PUBLIC_DIR, 'customer-login.html'));
 });
 
 app.get('/customer-signup.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'customer-signup.html'));
-});
-
-app.get('/customer-account.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'customer-account.html'));
+  res.sendFile(path.join(PUBLIC_DIR, 'customer-signup.html'));
 });
 
 app.get('/customer-login', (req, res) => {
@@ -886,16 +913,12 @@ app.get('/customer-account', (req, res) => {
   res.redirect('/customer-account.html');
 });
 
-app.get('/index.html', requirePageAuthentication, (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+app.get('/customer-account.html', requirePageAuthentication, (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'customer-account.html'));
 });
 
 app.get('/thankyou.html', requirePageAuthentication, (req, res) => {
-  res.sendFile(path.join(__dirname, 'thankyou.html'));
-});
-
-app.get('/customer-account.html', requirePageAuthentication, (req, res) => {
-  res.sendFile(path.join(__dirname, 'customer-account.html'));
+  res.sendFile(path.join(PUBLIC_DIR, 'thankyou.html'));
 });
 
 app.get('/api/site', (req, res) => {
