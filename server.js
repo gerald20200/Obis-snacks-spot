@@ -36,6 +36,35 @@ const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
       }
     })
   : null;
+const getSupabaseIdentity = async (user, accessToken) => {
+  let profile = null;
+
+  if (SUPABASE_URL && SUPABASE_ANON_KEY && accessToken) {
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+    const { data, error } = await userClient
+      .from('profiles')
+      .select('role, full_name, phone')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Supabase profile lookup failed:', error.message);
+    } else {
+      profile = data;
+    }
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    role: profile?.role === 'admin' ? 'admin' : 'customer',
+    fullName: profile?.full_name || user.user_metadata?.full_name || user.user_metadata?.name || user.email,
+    phone: profile?.phone || user.user_metadata?.phone || ''
+  };
+};
 const COOKIE_NAME = 'obi_snack_session';
 const PENDING_COOKIE_NAME = 'obi_snack_pending';
 const SESSION_TTL_SECONDS = 8 * 60 * 60;
@@ -298,13 +327,7 @@ const signInWithSupabase = async (email, password) => {
 
     return {
       token: data.session.access_token,
-      user: {
-        id: data.user.id,
-        email: data.user.email,
-        role: data.user.user_metadata?.role || 'customer',
-        fullName: data.user.user_metadata?.full_name || data.user.user_metadata?.name || data.user.email,
-        phone: data.user.user_metadata?.phone || ''
-      }
+      user: await getSupabaseIdentity(data.user, data.session.access_token)
     };
   } catch (error) {
     console.warn('Supabase login failed:', error.message);
@@ -334,12 +357,7 @@ const authenticate = async (req, res, next) => {
       try {
         const { data, error: userError } = await supabase.auth.getUser(token);
         if (!userError && data?.user) {
-          req.user = {
-            id: data.user.id,
-            email: data.user.email,
-            role: data.user.user_metadata?.role || 'customer',
-            fullName: data.user.user_metadata?.full_name || data.user.user_metadata?.name || data.user.email
-          };
+          req.user = await getSupabaseIdentity(data.user, token);
           return next();
         }
       } catch (supabaseError) {
@@ -363,12 +381,7 @@ const optionalAuthenticate = async (req, res, next) => {
       try {
         const { data, error: userError } = await supabase.auth.getUser(authHeader.split(' ')[1]);
         if (!userError && data?.user) {
-          req.user = {
-            id: data.user.id,
-            email: data.user.email,
-            role: data.user.user_metadata?.role || 'customer',
-            fullName: data.user.user_metadata?.full_name || data.user.user_metadata?.name || data.user.email
-          };
+          req.user = await getSupabaseIdentity(data.user, authHeader.split(' ')[1]);
           return next();
         }
       } catch (supabaseError) {
@@ -832,7 +845,7 @@ app.post('/api/auth/register', async (req, res) => {
             email: data.user.email,
             fullName: data.user.user_metadata?.full_name || String(fullName).trim(),
             phone: data.user.user_metadata?.phone || String(phone).trim(),
-            role: data.user.user_metadata?.role || 'customer'
+            role: 'customer'
           }
         });
       }
