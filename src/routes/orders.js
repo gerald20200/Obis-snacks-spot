@@ -1,9 +1,17 @@
 const express = require('express');
-const mongoose = require('mongoose');
-const Order = require('../models/Order');
 
-const router = express.Router();
 const orderStatuses = ['pending', 'confirmed', 'preparing', 'completed', 'cancelled'];
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const createOrdersRouter = (supabaseOrders) => {
+  const router = express.Router();
+
+  router.use((req, res, next) => {
+    if (!supabaseOrders) {
+      return res.status(503).json({ message: 'Supabase order storage is not configured. Set SUPABASE_SERVICE_ROLE_KEY.' });
+    }
+    return next();
+  });
 
 const requireAdmin = (req, res, next) => {
   if (!req.user || req.user.role !== 'admin') {
@@ -50,14 +58,6 @@ const normalizeItems = (items) => {
 
 const calculateTotal = (items) => items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-const createOrderNumber = () => {
-  const timestamp = Date.now().toString(36).toUpperCase();
-  const random = cryptoRandomBytes(5).toString('hex').toUpperCase();
-  return `OBI-${timestamp}-${random}`;
-};
-
-const cryptoRandomBytes = require('node:crypto').randomBytes;
-
 const validateOrderPayload = (body) => {
   const customerName = typeof body.customerName === 'string' ? body.customerName.trim() : '';
   const phone = typeof body.phone === 'string' ? body.phone.trim() : '';
@@ -96,43 +96,84 @@ const getAuthenticatedCustomer = (req) => {
   return req.user;
 };
 
-router.get('/orders', requireAdmin, async (req, res, next) => {
+const toApiOrder = (order) => ({
+  id: order.id,
+  _id: order.id,
+  orderId: order.order_number || order.id,
+  idempotencyKey: order.idempotency_key,
+  customerId: order.user_id,
+  customerName: order.customer_name,
+  phone: order.phone,
+  email: order.email || '',
+  address: order.address,
+  items: order.items || [],
+  total: Number(order.total_price || 0),
+  notes: order.notes || '',
+  status: order.status,
+  createdAt: order.created_at,
+  updatedAt: order.updated_at
+});
+
+const getOrderFilter = (id) => {
+  if (uuidPattern.test(id)) return ['id', id];
+  if (/^OBI-[A-Z0-9-]+$/i.test(id)) return ['order_number', id];
+  return null;
+};
+
+const handleStorageError = (res, error) => {
+  console.error('Supabase order storage request failed:', error.message);
+  return res.status(500).json({ message: 'Unable to access order storage.' });
+};
+
+router.get('/', requireAdmin, async (req, res) => {
   try {
-    const query = { status: req.query.status };
+    let query = supabaseOrders.from('orders').select('*').order('created_at', { ascending: false });
     if (req.query.status) {
       const normalizedStatus = String(req.query.status).toLowerCase();
       if (!orderStatuses.includes(normalizedStatus)) {
         return res.status(400).json({ message: 'Invalid order status.' });
       }
-      query.status = normalizedStatus;
+      query = query.eq('status', normalizedStatus);
     }
 
-    const orders = await Order.find(query).sort({ createdAt: -1 }).lean();
+    const { data, error } = await query;
+    if (error) return handleStorageError(res, error);
+    const orders = (data || []).map(toApiOrder);
     return res.json({ orders, count: orders.length });
   } catch (error) {
-    return next(error);
+    return handleStorageError(res, error);
   }
 });
 
-router.get('/orders/my-orders', requireCustomer, async (req, res, next) => {
+router.get('/my-orders', requireCustomer, async (req, res) => {
   try {
-    const orders = await Order.find({ customerId: req.user.id }).sort({ createdAt: -1 }).lean();
+    const { data, error } = await supabaseOrders
+      .from('orders')
+      .select('*')
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false });
+    if (error) return handleStorageError(res, error);
+    const orders = (data || []).map(toApiOrder);
     return res.json({ orders, count: orders.length });
   } catch (error) {
-    return next(error);
+    return handleStorageError(res, error);
   }
 });
 
-router.get('/orders/:id', requireOrderAccess, async (req, res, next) => {
+router.get('/:id', requireOrderAccess, async (req, res) => {
   try {
-    if (!mongoose.isValidObjectId(req.params.id) && !/^OBI-[A-Z0-9-]+$/.test(req.params.id)) {
-      return res.status(400).json({ message: 'Invalid order ID.' });
-    }
+    const filter = getOrderFilter(req.params.id);
+    if (!filter) return res.status(400).json({ message: 'Invalid order ID.' });
 
-    const order = await Order.findOne({ $or: [{ _id: req.params.id }, { orderId: req.params.id }] }).lean();
+    const { data: order, error } = await supabaseOrders
+      .from('orders')
+      .select('*')
+      .eq(filter[0], req.params.id)
+      .maybeSingle();
+    if (error) return handleStorageError(res, error);
     if (!order) return res.status(404).json({ message: 'Order not found.' });
 
-    if (req.user.role === 'customer' && Number(order.customerId) !== Number(req.user.id)) {
+    if (req.user.role === 'customer' && String(order.user_id) !== String(req.user.id)) {
       return res.status(403).json({ message: 'You can only view your own orders.' });
     }
 
@@ -140,80 +181,105 @@ router.get('/orders/:id', requireOrderAccess, async (req, res, next) => {
       return res.status(403).json({ message: 'Access denied.' });
     }
 
-    return res.json({ order });
+    return res.json({ order: toApiOrder(order) });
   } catch (error) {
-    return next(error);
+    return handleStorageError(res, error);
   }
 });
 
-router.post('/orders', async (req, res, next) => {
+router.post('/', async (req, res) => {
   try {
     const customer = getAuthenticatedCustomer(req);
-    const payload = validateOrderPayload(req.body || {});
-    const idempotencyKey = typeof req.body.idempotencyKey === 'string' ? req.body.idempotencyKey.trim() : '';
+    const body = req.body || {};
+    const payload = validateOrderPayload(body);
+    const idempotencyKey = typeof body.idempotencyKey === 'string' ? body.idempotencyKey.trim() : '';
+    if (idempotencyKey.length > 128) {
+      return res.status(400).json({ message: 'Idempotency key is too long.' });
+    }
     const total = calculateTotal(payload.items);
 
     if (idempotencyKey) {
-      const existing = await Order.findOne({ idempotencyKey }).lean();
-      if (existing) {
-        return res.status(200).json({ message: 'Order already saved.', order: existing });
-      }
+      const { data: existing, error } = await supabaseOrders
+        .from('orders')
+        .select('*')
+        .eq('idempotency_key', idempotencyKey)
+        .maybeSingle();
+      if (error) return handleStorageError(res, error);
+      if (existing) return res.status(200).json({ message: 'Order already saved.', order: toApiOrder(existing) });
     }
 
-    const order = await Order.create({
-      orderId: createOrderNumber(),
-      idempotencyKey: idempotencyKey || null,
-      customerId: customer ? customer.id : null,
-      customerName: payload.customerName,
+    const userId = customer && uuidPattern.test(String(customer.id)) ? customer.id : null;
+    const { data: order, error } = await supabaseOrders
+      .from('orders')
+      .insert({
+      user_id: userId,
+      customer_name: payload.customerName,
       phone: payload.phone,
       email: payload.email || (customer ? customer.email : ''),
       address: payload.address,
       items: payload.items,
-      total,
+      total_price: total,
       notes: payload.notes,
-      status: 'pending'
-    });
+      status: 'pending',
+      idempotency_key: idempotencyKey || null
+      })
+      .select('*')
+      .single();
+    if (error) return handleStorageError(res, error);
 
     return res.status(201).json({
       message: 'Order saved successfully.',
-      order
+      order: toApiOrder(order)
     });
   } catch (error) {
-    if (error instanceof mongoose.Error.ValidationError) {
-      return res.status(400).json({ message: error.message });
-    }
-    return next(error);
+    return res.status(400).json({ message: error.message || 'Invalid order details.' });
   }
 });
 
-router.patch('/orders/:id/status', requireAdmin, async (req, res, next) => {
+router.patch('/:id/status', requireAdmin, async (req, res) => {
   try {
     const status = String(req.body.status || '').toLowerCase();
     if (!orderStatuses.includes(status)) {
       return res.status(400).json({ message: 'Invalid order status.' });
     }
 
-    const order = await Order.findOneAndUpdate(
-      { $or: [{ _id: req.params.id }, { orderId: req.params.id }] },
-      { status },
-      { new: true, runValidators: true }
-    ).lean();
+    const filter = getOrderFilter(req.params.id);
+    if (!filter) return res.status(400).json({ message: 'Invalid order ID.' });
+    const { data: order, error } = await supabaseOrders
+      .from('orders')
+      .update({ status })
+      .eq(filter[0], req.params.id)
+      .select('*')
+      .maybeSingle();
+    if (error) return handleStorageError(res, error);
 
     if (!order) return res.status(404).json({ message: 'Order not found.' });
-    return res.json({ message: 'Order status updated successfully.', order });
+    return res.json({ message: 'Order status updated successfully.', order: toApiOrder(order) });
   } catch (error) {
-    return next(error);
+    return handleStorageError(res, error);
   }
 });
 
-router.delete('/orders/:id', requireAdmin, async (req, res, next) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
-    const order = await Order.findOneAndDelete({ $or: [{ _id: req.params.id }, { orderId: req.params.id }] }).lean();
+    const filter = getOrderFilter(req.params.id);
+    if (!filter) return res.status(400).json({ message: 'Invalid order ID.' });
+    const { data: order, error } = await supabaseOrders
+      .from('orders')
+      .delete()
+      .eq(filter[0], req.params.id)
+      .select('*')
+      .maybeSingle();
+    if (error) return handleStorageError(res, error);
     if (!order) return res.status(404).json({ message: 'Order not found.' });
-    return res.json({ message: 'Order deleted successfully.', order });
+    return res.json({ message: 'Order deleted successfully.', order: toApiOrder(order) });
   } catch (error) {
-    return next(error);
+    return handleStorageError(res, error);
   }
 });
 
-module.exports = router;
+  return router;
+};
+
+module.exports = createOrdersRouter;
+
