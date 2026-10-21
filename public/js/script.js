@@ -26,6 +26,22 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalOrderBtn = document.querySelector('.modal-order-btn');
   const modalStatus = document.getElementById('modalStatus');
 
+  const signOutAfterOrder = async (supabase = null) => {
+    try {
+      localStorage.removeItem('obi_snack_auth_token');
+    } catch {}
+
+    if (supabase) {
+      try {
+        await supabase.auth.signOut();
+      } catch {}
+    }
+
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+    } catch {}
+  };
+
   const foodData = {
     'Chicken Burger': {
       price: '₦2,500',
@@ -772,6 +788,7 @@ document.addEventListener('DOMContentLoaded', () => {
             notes: notes ? `${notes} | Custom requests: ${customRequestSummary}` : `Custom requests: ${customRequestSummary}`
           }));
 
+          await signOutAfterOrder(supabase);
           window.location.href = 'thankyou.html';
           return;
         }
@@ -804,6 +821,7 @@ document.addEventListener('DOMContentLoaded', () => {
           notes: notes ? `${notes} | Custom requests: ${customRequestSummary}` : `Custom requests: ${customRequestSummary}`
         }));
 
+        await signOutAfterOrder();
         window.location.href = 'thankyou.html';
       } catch (error) {
         alert(error.message || 'Unable to place your order right now.');
@@ -815,3 +833,4 @@ document.addEventListener('DOMContentLoaded', () => {
   updateSummary();
   filterCards('all');
 });
+
