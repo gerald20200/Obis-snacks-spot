@@ -45,17 +45,16 @@ Obis-snacks-spot/
 │       └── supabase-config.js# Supabase client configuration
 │
 ├── src/                      # Backend application modules
-│   ├── models/
-│   │   └── Order.js          # Mongoose order schema & model
 │   └── routes/
 │       └── orders.js         # Order API endpoints & business logic
 │
-├── data/                     # Persistent local fallback storage
-│   └── store.json            # JSON store used when external DB is offline
+├── data/                     # Local site and menu data
+│   └── store.json
 │
 ├── supabase/                 # Supabase database configuration & schemas
 │   ├── config.toml           # Supabase CLI configuration
-│   └── schema.sql            # PostgreSQL table schema & policies
+│   ├── schema.sql            # PostgreSQL table schema & policies
+│   └── order-storage.sql     # Migration for existing Supabase projects
 │
 └── tests/                    # Automated tests
     └── auth.test.js          # Authentication & PIN hashing tests
@@ -83,7 +82,9 @@ Obis-snacks-spot/
 3. Configure your `.env` values:
    - `JWT_SECRET`: A long random string for signing session cookies.
    - `AUTH_PIN`: A secure PIN for staff/PIN authentication.
-   - `MONGODB_URI` *(optional)*: MongoDB connection string for orders.
+   - `SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL.
+   - `SUPABASE_ANON_KEY` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: Supabase publishable/anon key used for auth verification.
+   - `SUPABASE_SERVICE_ROLE_KEY`: Server-only key used by order API routes. Never put this key in frontend files.
    - `ADMIN_USERNAME` & `ADMIN_PASSWORD`: Credentials for the admin portal (default: `admin` / `admin123`).
    - `PORT`: Server port (default: `3000`).
 
@@ -116,7 +117,7 @@ Executes the test suite located in `tests/`.
 | `/customer-account.html` | Customer account details | Authenticated Customers |
 | `/admin` or `/admin.html` | Admin dashboard & analytics | Staff / Admin |
 | `/api/health` | Healthcheck endpoint | Public |
-| `/api/orders` | Customer and admin order API | Authenticated |
+| `/api/orders` | Guest order creation and authenticated customer/admin order API | Mixed |
 
 ---
 
@@ -124,4 +125,4 @@ Executes the test suite located in `tests/`.
 
 - **Public Directory Isolation**: The server strictly serves static files from `public/`. Sensitive backend files (e.g. `.env`, `server.js`, `package.json`, database files) are never exposed directly to web clients.
 - **HTTP-Only Cookies**: Authentication sessions use secure, HTTP-only signed cookies to prevent XSS session theft.
-- **Safe Fallbacks**: If MongoDB or Supabase are temporarily unavailable, local JSON persistence (`data/store.json`) enables continuous operation.
+- **Order Storage**: Orders are stored in Supabase PostgreSQL. The server order API requires `SUPABASE_SERVICE_ROLE_KEY`; keep this key only in server environment variables.

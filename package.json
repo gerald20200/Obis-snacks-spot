@@ -28,8 +28,7 @@
     "express": "^4.19.2",
     "google-auth-library": "^9.15.0",
     "iconv-lite": "^0.7.3",
-    "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.17.0"
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "supabase": "^2.121.0",

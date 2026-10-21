@@ -4,13 +4,11 @@ const express = require('express');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose');
 const { createClient } = require('@supabase/supabase-js');
 const { OAuth2Client } = require('google-auth-library');
 const path = require('path');
 const crypto = require('node:crypto');
-const Order = require('./src/models/Order');
-const ordersRouter = require('./src/routes/orders');
+const createOrdersRouter = require('./src/routes/orders');
 
 const app = express();
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -21,9 +19,9 @@ const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const JWT_SECRET = process.env.JWT_SECRET;
 const AUTH_PIN = process.env.AUTH_PIN;
-const MONGODB_URI = process.env.MONGODB_URI;
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@obisnackspot.com';
@@ -36,6 +34,15 @@ const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
       }
     })
   : null;
+const supabaseOrderStore = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      }
+    })
+  : null;
+const ordersRouter = createOrdersRouter(supabaseOrderStore);
 const getSupabaseIdentity = async (user, accessToken) => {
   let profile = null;
 
@@ -78,7 +85,6 @@ const COOKIE_PROPERTIES = {
 };
 
 const productionAuthConfigMissing = NODE_ENV === 'production' && (!JWT_SECRET || !AUTH_PIN);
-const productionDatabaseConfigMissing = NODE_ENV === 'production' && !MONGODB_URI;
 
 if (!JWT_SECRET || !AUTH_PIN) {
   console.warn('JWT_SECRET and AUTH_PIN are not configured. Authentication will be unavailable until they are supplied.');
@@ -90,16 +96,6 @@ const googleClient = process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_S
   ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_CALLBACK_URL)
   : null;
 const STORE_PATH = path.join(__dirname, 'data', 'store.json');
-let databaseConnection = null;
-let databaseError = null;
-
-if (MONGODB_URI) {
-  databaseConnection = mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
-    .catch((error) => {
-      databaseError = error;
-      return null;
-    });
-}
 
 app.disable('x-powered-by');
 
@@ -393,23 +389,6 @@ const optionalAuthenticate = async (req, res, next) => {
   }
 };
 
-const requireDatabase = async (req, res, next) => {
-  if (productionDatabaseConfigMissing || !MONGODB_URI) {
-    return res.status(503).json({ message: 'Order storage is not configured. Add MONGODB_URI.' });
-  }
-
-  if (databaseError) {
-    return res.status(503).json({ message: 'Order storage is temporarily unavailable. Please try again.' });
-  }
-
-  try {
-    await databaseConnection;
-    return next();
-  } catch (error) {
-    return res.status(503).json({ message: 'Order storage is temporarily unavailable. Please try again.' });
-  }
-};
-
 const requirePageAuthentication = (req, res, next) => {
   const token = getCookie(req, COOKIE_NAME);
   if (!token) {
@@ -600,7 +579,7 @@ app.use('/api/auth', (req, res, next) => {
   return next();
 });
 
-app.use('/api/orders', requireDatabase, optionalAuthenticate, ordersRouter);
+app.use('/api/orders', optionalAuthenticate, ordersRouter);
 
 app.post('/api/auth/pin', (req, res) => {
   const { pin } = req.body || {};
@@ -982,10 +961,32 @@ app.get('/api/menu/:id', (req, res) => {
 
 app.get('/api/dashboard', authenticate, adminOnly, async (req, res, next) => {
   try {
-    const [orders, totalRevenue] = await Promise.all([
-      Order.find().sort({ createdAt: -1 }).lean(),
-      Order.aggregate([{ $group: { _id: null, total: { $sum: '$total' } } }])
-    ]);
+    if (!supabaseOrderStore) {
+      return res.status(503).json({ message: 'Supabase order storage is not configured. Set SUPABASE_SERVICE_ROLE_KEY.' });
+    }
+
+    const { data: storedOrders, error } = await supabaseOrderStore
+      .from('orders')
+      .select('id, order_number, user_id, customer_name, phone, email, address, items, total_price, notes, status, created_at, updated_at')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+
+    const orders = (storedOrders || []).map((order) => ({
+      id: order.id,
+      _id: order.id,
+      orderId: order.order_number || order.id,
+      customerId: order.user_id,
+      customerName: order.customer_name,
+      phone: order.phone,
+      email: order.email || '',
+      address: order.address,
+      items: order.items || [],
+      total: Number(order.total_price || 0),
+      notes: order.notes || '',
+      status: order.status,
+      createdAt: order.created_at,
+      updatedAt: order.updated_at
+    }));
     const statuses = orderStatuses.reduce((acc, status) => {
       acc[status] = orders.filter((order) => order.status === status).length;
       return acc;
@@ -993,13 +994,14 @@ app.get('/api/dashboard', authenticate, adminOnly, async (req, res, next) => {
 
     return res.json({
       totalOrders: orders.length,
-      totalRevenue: totalRevenue[0]?.total || 0,
+      totalRevenue: orders.reduce((total, order) => total + order.total, 0),
       menuItems: menu.length,
       statuses,
       recentOrders: orders.slice(0, 5)
     });
   } catch (error) {
-    return next(error);
+    console.error('Supabase dashboard order query failed:', error.message);
+    return res.status(500).json({ message: 'Unable to load dashboard order statistics.' });
   }
 });
 
