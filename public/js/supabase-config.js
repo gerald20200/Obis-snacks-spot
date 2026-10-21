@@ -1,11 +1,9 @@
-import { createClient } from '@supabase/supabase-js'
+// This file is loaded as a classic script after the Supabase CDN bundle.
+const supabaseUrl = 'https://ouriduvcnenodechrgau.supabase.co';
+const supabaseAnonKey = 'sb_publishable_xFRY5RTHxaBzjtcuaw_y3Q_9NoDmTWd';
 
-// Your Supabase Project Credentials
-const supabaseUrl = 'https://ouriduvcnenodechrgau.supabase.co'
-const supabaseAnonKey = 'sb_publishable_xFRY5RTHxaBzjtcuaw_y3Q_9NoDmTWd'
-
-// Initialize the Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-// Optional: Test log to confirm initialization in the browser console
-console.log('Supabase client initialized successfully!')
+if (window.supabase?.createClient) {
+	window.supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+} else {
+	console.error('Supabase CDN did not load; order submission cannot use Supabase.');
+}
