@@ -11,7 +11,9 @@ create table if not exists public.profiles (
 
 create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id) on delete cascade not null,
+  order_number text not null unique default ('OBI-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 12))),
+  idempotency_key text unique,
+  user_id uuid references auth.users(id) on delete set null,
   customer_name text not null,
   email text,
   phone text,
@@ -46,7 +48,7 @@ begin
     new.email,
     new.raw_user_meta_data ->> 'full_name',
     new.raw_user_meta_data ->> 'phone',
-    coalesce(new.raw_user_meta_data ->> 'role', 'customer')
+    'customer'
   )
   on conflict (id) do update
     set email = excluded.email,
@@ -66,22 +68,33 @@ alter table public.profiles enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
 
+revoke insert, update on public.profiles from public, anon, authenticated;
+grant update (full_name, phone) on public.profiles to authenticated;
+
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role = 'admin'
+  );
+$$;
+
+revoke all on function public.is_admin() from public, anon;
+grant execute on function public.is_admin() to authenticated;
+
 create policy "Profiles view own profile" on public.profiles
 for select using (auth.uid() = id);
-
-create policy "Profiles insert own profile" on public.profiles
-for insert with check (auth.uid() = id);
 
 create policy "Profiles update own profile" on public.profiles
 for update using (auth.uid() = id) with check (auth.uid() = id);
 
 create policy "Admins can read all profiles" on public.profiles
-for select using (
-  exists (
-    select 1 from public.profiles p
-    where p.id = auth.uid() and p.role = 'admin'
-  )
-);
+for select using (public.is_admin());
 
 create policy "Customers can insert their own orders" on public.orders
 for insert with check (user_id = auth.uid());
@@ -89,23 +102,9 @@ for insert with check (user_id = auth.uid());
 create policy "Customers can view own orders" on public.orders
 for select using (user_id = auth.uid());
 
-create policy "Customers can update own orders" on public.orders
-for update using (user_id = auth.uid())
-with check (user_id = auth.uid());
-
 create policy "Admins can manage all orders" on public.orders
-for all using (
-  exists (
-    select 1 from public.profiles p
-    where p.id = auth.uid() and p.role = 'admin'
-  )
-)
-with check (
-  exists (
-    select 1 from public.profiles p
-    where p.id = auth.uid() and p.role = 'admin'
-  )
-);
+for all using (public.is_admin())
+with check (public.is_admin());
 
 create policy "Customers can insert own order items" on public.order_items
 for insert with check (
@@ -124,18 +123,8 @@ for select using (
 );
 
 create policy "Admins can manage all order items" on public.order_items
-for all using (
-  exists (
-    select 1 from public.profiles p
-    where p.id = auth.uid() and p.role = 'admin'
-  )
-)
-with check (
-  exists (
-    select 1 from public.profiles p
-    where p.id = auth.uid() and p.role = 'admin'
-  )
-);
+for all using (public.is_admin())
+with check (public.is_admin());
 
 create or replace function public.update_updated_at()
 returns trigger
